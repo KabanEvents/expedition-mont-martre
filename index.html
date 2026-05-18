@@ -407,8 +407,14 @@
     </div>
 
     <div class="admin-section">
-      <h3 class="display">Guide</h3>
-      <div class="field"><label>Lien WhatsApp</label><input type="url" id="adm-whatsapp" placeholder="https://chat.whatsapp.com/..."/></div>
+      <h3 class="display">Liens guide par équipe</h3>
+      <p class="small" style="margin-bottom:8px">Un canal WhatsApp / Signal / SMS par équipe. Le bouton "Guide" ouvre celui de l'équipe connectée.</p>
+      <div class="field"><label>Breithorn (4164)</label><input type="url" id="adm-wa-4164" placeholder="https://chat.whatsapp.com/..."/></div>
+      <div class="field"><label>Dufourspitze (4634)</label><input type="url" id="adm-wa-4634" placeholder="https://chat.whatsapp.com/..."/></div>
+      <div class="field"><label>Gran Paradiso (4061)</label><input type="url" id="adm-wa-4061" placeholder="https://chat.whatsapp.com/..."/></div>
+      <div class="field"><label>Matterhorn (4478)</label><input type="url" id="adm-wa-4478" placeholder="https://chat.whatsapp.com/..."/></div>
+      <div class="field"><label>Mont Blanc (4807)</label><input type="url" id="adm-wa-4807" placeholder="https://chat.whatsapp.com/..."/></div>
+      <div class="field"><label>Parrotspitze (4432)</label><input type="url" id="adm-wa-4432" placeholder="https://chat.whatsapp.com/..."/></div>
     </div>
 
     <div class="admin-section">
@@ -875,7 +881,10 @@ document.getElementById('btn-insects-claim').addEventListener('click', () => cla
 document.getElementById('btn-stairs-claim').addEventListener('click',  () => claimBonus('stairs'));
 
 function openWhatsapp() {
-  if (config.whatsapp_url) window.open(config.whatsapp_url, '_blank');
+  const urls = config.whatsapp_urls || {};
+  const url = myTeam ? urls[myTeam.team_code] : null;
+  if (url) window.open(url, '_blank');
+  else if (config.whatsapp_url) window.open(config.whatsapp_url, '_blank'); // legacy fallback
   else toast('Lien guide non configuré');
 }
 window.openWhatsapp = openWhatsapp;
@@ -978,7 +987,11 @@ function hydrateAdmin() {
   document.getElementById('adm-bonus-insects').value = config.bonus_insects ?? 30;
   document.getElementById('adm-bonus-stairs').value = config.bonus_stairs ?? 30;
   document.getElementById('adm-final-venue').value = config.final_venue || '';
-  document.getElementById('adm-whatsapp').value = config.whatsapp_url || '';
+  const waUrls = config.whatsapp_urls || {};
+  ['4164','4634','4061','4478','4807','4432'].forEach(code => {
+    const el = document.getElementById('adm-wa-' + code);
+    if (el) el.value = waUrls[code] || '';
+  });
   const sp = document.getElementById('adm-sponsor-preview-img');
   if (config.sponsor_logo) { sp.src = config.sponsor_logo; sp.style.display = 'block'; }
   else sp.style.display = 'none';
@@ -1041,6 +1054,11 @@ document.getElementById('adm-sponsor-logo').addEventListener('change', async e =
 });
 
 document.getElementById('btn-adm-save').addEventListener('click', async () => {
+  const whatsapp_urls = {};
+  ['4164','4634','4061','4478','4807','4432'].forEach(code => {
+    const v = (document.getElementById('adm-wa-' + code).value || '').trim();
+    if (v) whatsapp_urls[code] = v;
+  });
   const patch = {
     sponsor_name: document.getElementById('adm-sponsor-name').value.trim(),
     sponsor_logo: config.sponsor_logo || null,
@@ -1049,7 +1067,7 @@ document.getElementById('btn-adm-save').addEventListener('click', async () => {
     bonus_insects: parseInt(document.getElementById('adm-bonus-insects').value, 10) || 0,
     bonus_stairs: parseInt(document.getElementById('adm-bonus-stairs').value, 10) || 0,
     final_venue: document.getElementById('adm-final-venue').value.trim(),
-    whatsapp_url: document.getElementById('adm-whatsapp').value.trim(),
+    whatsapp_urls,
   };
   const ok = await saveConfigToDb(patch);
   if (ok) toast('Configuration enregistrée');
