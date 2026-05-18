@@ -824,7 +824,8 @@ function checkWin() {
   const reveal = document.createElement('div');
   reveal.id = 'win-reveal';
   reveal.className = 'reveal-venue';
-  reveal.innerHTML = `<p class="eyebrow" style="color:var(--navy-900)">Sommet atteint</p><h2 class="display">48° 53' 18" N · 2° 20' 25" E</h2><div class="venue-text">${config.final_venue || 'Rendez-vous au sommet — paramétrez le lieu dans l\\'admin.'}</div>`;
+  const venue = config.final_venue || 'Rendez-vous au sommet — paramétrez le lieu dans l’admin.';
+  reveal.innerHTML = `<p class="eyebrow" style="color:var(--navy-900)">Sommet atteint</p><h2 class="display">48° 53' 18" N · 2° 20' 25" E</h2><div class="venue-text">${venue}</div>`;
   document.getElementById('page-codes').insertBefore(reveal, document.getElementById('coord-display'));
 }
 
