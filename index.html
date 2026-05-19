@@ -1,1174 +1,3 @@
-
-Claude a terminé la réponse.
-
-Jeu Expédition Mont Martre Le jeu "Expédition Mont Martre" est une sorte d'escape game / chasse au trésor urbaine qui se passe à Montmartre à Paris. C'est surtout destiné à être une opération de teambuilding pour une entreprise. Il peut y avoir jusqu'à 6 équipe. Chaque équipe sera représentée par u
-
-pasted
-
-18 mai
-I'll read this document about your "Expédition Mont Martre" game concept. It's a really creative team-building escape game in Montmartre, where teams imagine they're climbing a mountain through 8 challenges around the neighborhood, with each challenge revealing part of a GPS coordinate.
-
-Before I respond further — what would you like me to help with? A few directions I could take this:
-
-Q : What do you need me to do with this Expédition Mont Martre concept?
-R : Build the PWA app (prototype)
-
-18 mai
-Good — let's build the PWA prototype. Before I start coding, a few things I want to confirm so the prototype is actually usable for you, not just a demo.
-
-Q : What level of prototype do you need right now?
-R : PWA + admin config screen (admin sets sponsor logo, # teams, final venue in-app)
-
-Q : How should the GPS code be assembled across the 8 challenges?
-R : each team enters all 8 codes in the order they wish.
-
-Q : Branding direction for the UI?
-R : Alpine / mountaineering (navy, snow, topographic textures)
-
-18 mai
-Got it. Let me build this as a single-file HTML PWA with localStorage for persistence. I'll cover:
-
-Admin config screen (sponsor logo upload, # teams, final venue text/coordinates)
-Player flow: pages 1→7 as you described, with team code unlock
-Code entry grid: 8 challenges, any order, real-time validation against the GPS solution (48°53'18"N / 2°20'25"E)
-Bonus selfie page + WhatsApp guide link + install prompt (PWA)
-Alpine UI with navy/snow palette and topographic feel
-Let me load the design module and build it.
-
-
-A consulté 2 fichiers
-A consulté 2 fichiers
-Now I'll build the PWA. Given the scope (admin + 7 player pages + state persistence), I'll create it as a single HTML file in outputs.
-
-
-Fichier créé, lu un fichier
-Fichier créé, lu un fichier
-PWA prototype ready. Single HTML file, fully self-contained, installable.
-
-What's inside
-
-7 player pages (home → briefing → team code → checklist → first trial dispatch → code grid → bonus selfie) + admin console (top-right ⚙ button)
-Team code unlock — 4-digit pad validates against the 6 summits, gives the team its dispatched first trial
-Code grid — all 8 trials clickable in any order, the GPS coordinate 48°53'18" N · 2°20'25" E fills slot-by-slot as codes are validated
-Win reveal — when all 8 are solved, the final venue (set in admin) appears in a gold card above the grid
-Admin — sponsor name + logo upload, team count, final venue text, WhatsApp guide URL, reset buttons
-Persistence — everything saved in localStorage (game state separate from admin config, so you can reset just the game)
-Aesthetic — navy/snow/gold, Bebas Neue + Cormorant Garamond + JetBrains Mono, topographic SVG texture, ice-themed micro-interactions
-A few things to know before deploying
-
-localStorage is per-device, per-browser. Each team's tablet/phone holds its own game state. That's actually what you want here — but it also means the admin config you set on the host machine doesn't propagate to players' devices. To distribute sponsor logo/final venue, you'd need to either (a) pre-load each device, or (b) move config to a tiny backend (Firebase, Supabase, even a JSON file on a CDN). Want me to add (b)?
-WhatsApp opens whatever URL you paste (group invite or wa.me/...).
-QR code on the Navigo pass should point to wherever this index.html is hosted. The PWA manifest is inlined so installation works from a single static file.
-Open questions before you go further
-
-Q : Should the admin config sync across team devices?
-R : Yes, add a backend (Firebase/Supabase) so admin config syncs across all devices
-
-Q : Anything to add next? (Sélectionnez toutes les réponses applicables)
-R : Add a timer / chrono per team, Add a real-time scoreboard (which team has solved what), Add the 3 bonus time stages (only the selfie is in for now), I'll need to upload the icons myself as they were custom made.
-
-18 mai
-Good plan. Before I rebuild, let me confirm the architecture so we don't go in circles.
-
-Proposed stack: Supabase
-
-Free tier is generous (500MB DB, 1GB storage, real-time included)
-Single project hosts: admin config + per-team game state + real-time scoreboard
-Anonymous auth (no signup friction for teams)
-One small JS client added to the HTML — no build step
-Data model
-
-config table (single row, edited by admin): sponsor name, sponsor logo URL, team count, final venue, WhatsApp URL, game start time (for chrono), bonus icons URLs
-teams table (one row per active team): team code, started_at, finished_at, solved trials (JSONB), selfie URL, bonuses claimed (JSONB)
-Storage bucket: sponsor logo + 8 trial icons + selfies
-Admin gets:
-
-Sponsor + venue + WhatsApp (as before)
-Start the chrono button (sets game start time for all teams simultaneously, or per-team on team unlock — I'd suggest the latter, see below)
-Trial icon uploader (one PNG/SVG per trial, you upload custom-made ones)
-Bonus icon uploader (3 bonus stages — see below)
-Live scoreboard view (real-time, sorted by # trials solved then by time)
-Player gets:
-
-Same flow as now + persistent chrono badge once started
-Live scoreboard tab (see other teams' progress)
-3 bonus stages reachable from the codes page
-Two design choices I need you to settle before I code, because they shape the schema:
-
-Q : How should the chrono start?
-R : Per-team start — each team's chrono starts when they enter their team code
-
-Q : What are the 3 bonus time stages?
-R : selfie, insects, bonus for those who don't take the cable car but walk up the stairs.
-
-Q : How is the time bonus applied?
-R : Fixed bonus per stage (e.g. −30s per bonus claimed)
-
-18 mai
-Solid. Let me lay out the plan before coding so we're aligned — this version is significantly more complex than v1.
-
-What I'll build
-Supabase backend (you'll need to create a free project — I'll give you exact setup steps + SQL)
-
-Data model
-
-config (single row): sponsor name, sponsor logo URL, final venue, WhatsApp URL, bonus values in seconds, trial icon URLs (8), bonus icon URLs (3)
-teams (one row per active team, keyed by team code): name, started_at, finished_at, solved (JSONB: {trial_id: timestamp}), bonuses (JSONB: {selfie: bool, insects: bool, stairs: bool}), selfie_url
-Storage bucket assets: sponsor logo, 8 trial icons, 3 bonus icons, team selfies
-Admin page additions
-
-Sponsor + final venue + WhatsApp (existing)
-Trial icon uploader (8 slots, one per challenge)
-Bonus icon uploader (3 slots: selfie / insects / stairs)
-Bonus value setter (3 number inputs in seconds, default −30s each)
-Live scoreboard (real-time, auto-refresh via Supabase subscriptions): team name · # trials solved · elapsed time · bonuses claimed · effective time (elapsed − bonuses)
-Reset all teams button
-Player flow additions
-
-Chrono starts on team-code submit, persistent badge at top of every page after that
-Chrono pauses & locks when 8th trial validated → shows final time
-Codes page gets a Bonuses drawer with 3 cards (selfie, insects, stairs) — each one toggles a "claimed" state and subtracts seconds from the effective time
-Selfie capture uploads to Storage (was just localStorage before)
-Scoreboard accessible from codes page (read-only view of all teams)
-Real-time sync
-
-Admin config changes propagate instantly to all team devices (Supabase real-time channels)
-Scoreboard updates live as teams claim trials/bonuses
-Custom trial & bonus icons
-
-Admin uploads PNG/SVG → stored in Supabase Storage → referenced everywhere by URL
-Fallback to current built-in SVG glyphs if no custom icon is uploaded yet (so the app works before you upload)
-What I need from you
-Q : Supabase setup — how do you want to handle it?
-R : Walk me through the Supabase setup step-by-step
-
-Q : Authentication — how locked down should this be?
-R : Admin password gate (just the admin page is protected)
-
-Q : Chrono display — counting up or down?
-R : Decreasing chrono (e.g. starts at 2h, counts down to 0 = time's up)
-
-18 mai
-Good. Here's the plan: Step 1 I walk you through Supabase setup, Step 2 once you have credentials, I rebuild the PWA on top of it. Let's do Step 1 cleanly so the rest goes smoothly.
-
-Step 1 — Set up Supabase (≈ 15 min)
-1. Create the project
-Go to https://supabase.com → sign up (free, GitHub login is fastest)
-Click New project
-Fill in:
-Name: expedition-mont-martre
-Database password: generate a strong one — save it in your password manager, you won't need it for the app but Supabase asks for it on certain operations
-Region: West EU (Paris) — lowest latency for your event
-Plan: Free
-Click Create new project. It takes ~2 minutes to provision.
-2. Get your two keys
-Once provisioned, go to Project Settings (gear icon, bottom-left) → API. You need two values:
-
-Project URL — looks like https://xxxxxxxxxxxxx.supabase.co
-anon public key — long JWT starting with eyJ...
-Copy both into a notes file. The anon key is safe to embed in client code; we'll use Row Level Security to lock down the admin password gate.
-
-3. Create the database schema
-In the Supabase dashboard, go to SQL Editor (left sidebar) → New query. Paste this entire block and click Run:
-
-sql
--- ===== CONFIG TABLE (single row, id=1) =====
-create table public.config (
-  id              int primary key default 1,
-  sponsor_name    text,
-  sponsor_logo    text,
-  final_venue     text,
-  whatsapp_url    text,
-  chrono_minutes  int  default 120,
-  bonus_selfie    int  default 30,
-  bonus_insects   int  default 30,
-  bonus_stairs    int  default 30,
-  trial_icons     jsonb default '{}'::jsonb,
-  bonus_icons     jsonb default '{}'::jsonb,
-  admin_pw_hash   text,
-  updated_at      timestamptz default now(),
-  constraint config_singleton check (id = 1)
-);
-
-insert into public.config (id) values (1) on conflict do nothing;
-
--- ===== TEAMS TABLE (one row per team that has unlocked) =====
-create table public.teams (
-  team_code     text primary key,    -- e.g. '4807'
-  team_name     text not null,       -- e.g. 'Mont Blanc'
-  started_at    timestamptz default now(),
-  finished_at   timestamptz,
-  solved        jsonb default '{}'::jsonb,   -- {avalanche: "2026-05-18T14:23:00Z", ...}
-  bonuses       jsonb default '{}'::jsonb,   -- {selfie: true, insects: false, stairs: true}
-  selfie_url    text,
-  updated_at    timestamptz default now()
-);
-
--- ===== AUTO-UPDATE updated_at =====
-create or replace function public.touch_updated_at() returns trigger as $$
-begin new.updated_at = now(); return new; end;
-$$ language plpgsql;
-
-create trigger config_touch before update on public.config
-  for each row execute function public.touch_updated_at();
-create trigger teams_touch before update on public.teams
-  for each row execute function public.touch_updated_at();
-
--- ===== ROW LEVEL SECURITY =====
-alter table public.config enable row level security;
-alter table public.teams  enable row level security;
-
--- Everyone can READ config (players need sponsor/venue/etc.)
-create policy "config_read_all"  on public.config for select using (true);
--- Everyone can WRITE config (we'll gate admin in-app with a password)
--- For a one-day event this is fine; if you want stricter, see note below.
-create policy "config_write_all" on public.config for update using (true) with check (true);
-
--- Everyone can read teams (scoreboard)
-create policy "teams_read_all"   on public.teams for select using (true);
--- Anyone can insert (a team unlocking itself)
-create policy "teams_insert_all" on public.teams for insert with check (true);
--- Anyone can update (a team submitting codes / bonuses)
-create policy "teams_update_all" on public.teams for update using (true) with check (true);
-
--- ===== ENABLE REALTIME =====
-alter publication supabase_realtime add table public.config;
-alter publication supabase_realtime add table public.teams;
-Note on security: with these policies, anyone who has the anon key can technically write anything. For a one-day event with a private URL, that's an acceptable trade-off and matches your "admin password gate" choice — the password is what stops a player from accidentally opening the admin page. If later you want stricter rules (e.g. only the admin can update config), we move admin operations behind a Supabase Edge Function. Tell me if you want that hardening.
-
-4. Create the storage bucket
-Left sidebar → Storage → New bucket:
-
-Name: assets
-Public bucket: ✅ ON (so player devices can load images without auth)
-Click Create bucket
-Then on the bucket → Policies → New policy → For full customization → paste:
-
-sql
-create policy "assets_read_all"
-  on storage.objects for select
-  using (bucket_id = 'assets');
-
-create policy "assets_write_all"
-  on storage.objects for insert
-  with check (bucket_id = 'assets');
-
-create policy "assets_update_all"
-  on storage.objects for update
-  using (bucket_id = 'assets');
-
-create policy "assets_delete_all"
-  on storage.objects for delete
-  using (bucket_id = 'assets');
-Click Review then Save policy.
-
-5. Set the admin password
-Back to SQL Editor → New query. Pick an admin password (e.g. montblanc2026 — change it), then run:
-
-sql
-update public.config
-set admin_pw_hash = encode(digest('YOUR_ADMIN_PASSWORD_HERE', 'sha256'), 'hex')
-where id = 1;
-The hash (not the password) is stored. The app will hash the typed password and compare.
-
-6. Verify it's all working
-In SQL Editor:
-
-sql
-select * from public.config;
-select * from public.teams;
-You should see one config row (with your hash) and zero teams.
-
-What to send me next
-Once you send the Project URL and anon key, I'll rebuild the PWA with all the new features wired into your Supabase project. You'll get a single HTML file you can host anywhere (Netlify, Vercel, even GitHub Pages) — the QR codes on the Navigo passes point to that URL.
-
-Q : Where are you?
-R : it looks like supabase has changed i now have publishable and secret api keys no anon api keys
-
-18 mai
-Yes, you're right — Supabase rolled out a new API key system in late 2025. The naming changed but the function is the same:
-
-publishable key (starts with sb_publishable_...) = the new name for the anon key — safe to embed in client code, replaces the old one
-secret key (starts with sb_secret_...) = the new name for the service_role key — full admin access, never put in client code
-For our PWA, you use the publishable key. Everything I wrote works the same; just substitute "publishable" wherever I said "anon."
-
-Let me verify quickly that nothing else changed with the API behavior:
-
-
-Web recherché
-Web recherché
-Confirmed. "A single publishable key with the form sb_publishable_... can be used to replace the anon key", and "You can initialize any version of the Supabase Client libraries with the new values without any additional changes, and we don't expect any backward compatibility issues." 
-GitHub
-GitHub
-
-So for your setup:
-
-What to send me
-From your Supabase dashboard → Settings → API Keys tab:
-
-Project URL (find it in Settings → Data API or in the Connect dialog at the top)
-Publishable key — the one starting with sb_publishable_...
-⚠️ Do NOT send me the secret key (sb_secret_...). That one stays in your password manager — it has full admin access and is never used in the client app.
-
-Quick check before you send
-Have you completed the other setup steps in my previous message?
-
-✅ SQL schema run (config + teams tables)
-✅ Storage bucket assets created (public) + policies added
-✅ Admin password set via the UPDATE config query
-✅ Verified with select * from public.config that you see one row with admin_pw_hash filled in
-Once you reply with the URL + publishable key, I rebuild the PWA in one shot.
-
-Q : Where are you in the setup?
-R : Need to redo something — will tell you
-
-18 mai
-Go ahead — tell me what you need to redo or what isn't working. Paste the error message or describe the symptom, and we'll fix it before moving on.
-
-i have issues with new policy with bucket Assets
-
-18 mai
-No problem — the storage policies UI changed a bit recently. Let me give you two ways to do this. The second one (SQL Editor) is more reliable.
-
-Option A — UI route (current Supabase dashboard)
-Storage (left sidebar) → click your assets bucket
-At the top of the bucket view, click the Policies tab (or sometimes you need to go to Storage → Policies in the left sidebar instead of inside the bucket)
-Click New policy → For full customization (not the templates)
-Fill in one policy at a time like this:
-Policy 1 — Read
-
-Policy name: assets_read_all
-Allowed operation: ✅ SELECT only
-Target roles: leave default (public)
-USING expression: bucket_id = 'assets'
-WITH CHECK expression: leave empty
-Save
-Policy 2 — Insert
-
-Policy name: assets_write_all
-Allowed operation: ✅ INSERT only
-USING: leave empty
-WITH CHECK: bucket_id = 'assets'
-Save
-Policy 3 — Update
-
-Policy name: assets_update_all
-Allowed operation: ✅ UPDATE only
-USING: bucket_id = 'assets'
-WITH CHECK: bucket_id = 'assets'
-Save
-Policy 4 — Delete
-
-Policy name: assets_delete_all
-Allowed operation: ✅ DELETE only
-USING: bucket_id = 'assets'
-Save
-The trap that bites most people: the form sometimes asks for one operation per policy. If you tick multiple operations in a single policy, the USING/CHECK fields get confusing. One operation per policy is cleaner.
-
-Option B — SQL Editor (recommended, faster)
-Skip the UI entirely. Go to SQL Editor → New query and run this:
-
-sql
--- Drop any existing assets policies first (safe even if none exist)
-drop policy if exists "assets_read_all"   on storage.objects;
-drop policy if exists "assets_write_all"  on storage.objects;
-drop policy if exists "assets_update_all" on storage.objects;
-drop policy if exists "assets_delete_all" on storage.objects;
-
-create policy "assets_read_all"
-  on storage.objects for select
-  to public
-  using (bucket_id = 'assets');
-
-create policy "assets_write_all"
-  on storage.objects for insert
-  to public
-  with check (bucket_id = 'assets');
-
-create policy "assets_update_all"
-  on storage.objects for update
-  to public
-  using (bucket_id = 'assets')
-  with check (bucket_id = 'assets');
-
-create policy "assets_delete_all"
-  on storage.objects for delete
-  to public
-  using (bucket_id = 'assets');
-Click Run. You should see four CREATE POLICY success messages.
-
-Then verify:
-
-sql
-select policyname, cmd
-from pg_policies
-where schemaname = 'storage' and tablename = 'objects'
-  and policyname like 'assets_%';
-You should see four rows: one each for SELECT, INSERT, UPDATE, DELETE.
-
-Also — did you mark the bucket as public?
-When you created the assets bucket, there should have been a Public bucket toggle.
-
-If you toggled it ON: ✅ images will be reachable at https://<your-project>.supabase.co/storage/v1/object/public/assets/... — this is what we want
-If you left it OFF: images are only reachable through signed URLs, which complicates client code
-To check: Storage → assets bucket → ⋯ menu (or Edit bucket) → look for Public toggle. If it's off, turn it on.
-
-Q : Which path are you taking?
-R : did option A, worked apprently
-
-18 mai
-Good — Option A worked. Let's verify with a quick sanity check before moving on:
-
-sql
-select policyname, cmd
-from pg_policies
-where schemaname = 'storage' and tablename = 'objects'
-  and policyname like 'assets_%';
-Run that in SQL Editor. You should see four rows: SELECT, INSERT, UPDATE, DELETE.
-
-Once that's confirmed, send me:
-
-Project URL (https://xxxxxxxxxxxx.supabase.co)
-Publishable key (sb_publishable_...)
-Confirmation that select * from public.config; shows one row with admin_pw_hash filled in
-The admin password you set (so I can hardcode the hashing logic correctly — actually you keep it, just confirm you remember it)
-Then I rebuild the PWA in one go.
-
-⚠️ One reminder: only send the publishable key (sb_publishable_...). Never the secret key (sb_secret_...).
-
-i have 6 rows as delete and update needed select as well.
-
-18 mai
-That's correct and expected — that's how Postgres RLS policies work. Here's why:
-
-SELECT policy → needed for reading files (select on storage.objects)
-INSERT policy → needed for uploads
-UPDATE policy → needs both an "old row visibility" check (USING = a SELECT-style filter) AND a "new row check" (WITH CHECK). So the dashboard creates two underlying rows.
-DELETE policy → needs to first "see" the row before deleting it (USING = a SELECT-style filter). So again two underlying rows.
-That's why you see 6 rows for 4 logical policies. Totally normal. ✅
-
-Quick check — run this to make sure all the right operations are covered:
-
-sql
-select distinct cmd
-from pg_policies
-where schemaname = 'storage' and tablename = 'objects'
-  and policyname like 'assets_%';
-You should get four distinct values: SELECT, INSERT, UPDATE, DELETE. If you only see three or fewer, one of the policies didn't save correctly.
-
-If that's clean, we're ready. Send me:
-
-Project URL (https://xxxxxxxxxxxx.supabase.co)
-Publishable key (sb_publishable_... — never the secret one)
-Confirmation that select * from public.config; returns one row with admin_pw_hash populated (you don't need to send me the hash itself or the password — just confirm it's there)
-Then I rebuild the PWA in a single file wired to your project.
-
-project URL:
-https://rtxcbzqqyvxukourmphw.supabase.co
-Publishable API key
-sb_publishable_oUk1wNwicZ7x3HaKgENb2w_PiDPRnZl
-
-18 mai
-Got it. Before I burn cycles rebuilding, two things:
-
-1. Quick verification ping — run this in your SQL Editor and tell me what you see:
-
-sql
-select id, admin_pw_hash is not null as has_password
-from public.config;
-You should get one row: id=1, has_password=true. If has_password=false, we need to set the admin password first.
-
-2. Hosting — where will this PWA live?
-
-The QR code on the Navigo passes needs a stable URL. Options:
-
-it returned has password: false.
-
-18 mai
-No problem — let's set it now.
-
-Pick an admin password (something you'll remember but not trivial, e.g. Sommet2026!). Then in SQL Editor → New query, run this (replace the placeholder with your real password):
-
-sql
-update public.config
-set admin_pw_hash = encode(digest('PUT_YOUR_PASSWORD_HERE', 'sha256'), 'hex')
-where id = 1;
-Click Run. You should see UPDATE 1.
-
-If you get an error like function digest(...) does not exist, you need to enable the pgcrypto extension first. Run this once, then re-run the UPDATE:
-
-sql
-create extension if not exists pgcrypto;
-Verify
-sql
-select id, admin_pw_hash is not null as has_password, length(admin_pw_hash) as hash_len
-from public.config;
-You should see: id=1, has_password=true, hash_len=64 (SHA-256 hex = 64 chars).
-
-Important — keep your password somewhere safe. I never see it; the database only stores its hash. If you forget it, you'd reset it by re-running the UPDATE with a new password.
-
-Once that returns has_password=true, tell me and also answer the hosting question from the previous message, and I build the PWA.
-
-i guess github then
-
-18 mai
-Good choice — GitHub Pages is free, stable, gives you HTTPS (required for PWA installation), and works perfectly with a single HTML file.
-
-Now, back to the admin password — did the UPDATE work?
-
-Q : Admin password status?
-R : yep
-
-18 mai
-Building it now. This is a substantial rewrite — Supabase client, real-time sync, chrono, scoreboard, bonuses, custom icon uploads, admin password gate.
-
-
-2 fichiers créés, a exécuté une commande, lu un fichier
-2 fichiers créés, a exécuté une commande, lu un fichier
-Voilà la PWA complète, branchée sur Supabase. Pour la mettre en ligne sur GitHub Pages :
-
-1. Créer le repo
-
-github.com → New repository → nom : expedition-mont-martre (public)
-Upload index.html à la racine, commit
-2. Activer Pages
-
-Settings → Pages → Source : Deploy from a branch → Branch : main / / (root) → Save
-1-2 min plus tard ton URL : https://[ton-pseudo].github.io/expedition-mont-martre/
-3. Tester
-
-Ouvre l'URL sur ton tel → tu devrais voir la page d'accueil
-Bouton ⚙ ADMIN en haut à droite → mot de passe → console
-Configure : sponsor, durée du chrono, bonus en secondes, lieu final, lien WhatsApp, upload les 11 icônes
-Sur un autre tel, entre un code équipe (ex : 4807 Mont Blanc) et vérifie que la progression apparaît live dans le classement
-4. Générer les QR codes
-
-Pour chaque forfait Navigo : QR pointant vers la même URL GitHub Pages (qr-code-generator.com ou similaire)
-Les joueurs scannent → installent en PWA → entrent leur code à 4 chiffres
-Un truc à vérifier dès le premier test : que le classement se met bien à jour entre deux téléphones (preuve que la realtime Supabase fonctionne). Si ça lag, c'est que la publication realtime n'est pas activée sur la table teams — dis-le moi et je te file la requête SQL.
-
-
-Index
-Code · HTML 
-je ne pige pas:
-Upload index.html à la racine, commit
-
-18 mai
-Pas de souci, c'est l'étape qui pique toujours la première fois. Voici en détail :
-
-Étape par étape sur github.com (sur ton ordi)
-
-Va sur github.com et connecte-toi (crée un compte si tu n'en as pas)
-En haut à droite, clique sur le + → New repository
-Remplis :
-Repository name : expedition-mont-martre
-Public (coché)
-Add a README file (coché)
-Clique Create repository
-Tu arrives sur la page du repo. Tu vois README.md listé. Maintenant :
-Clique sur Add file (bouton vers le haut-droite) → Upload files
-Une zone "Drag files here..." apparaît
-Glisse-dépose ton index.html (celui que je t'ai fourni) dans cette zone, ou clique "choose your files"
-Descends en bas de la page
-Dans Commit changes mets un titre genre Initial PWA
-Clique le bouton vert Commit changes
-C'est ça, "commit" = enregistrer/valider. Ton index.html est maintenant à la racine du repo.
-
-Ensuite
-
-Onglet Settings (en haut du repo) → menu de gauche Pages
-Sous "Build and deployment" → Source : Deploy from a branch
-Branch : main / / (root) → clique Save
-Attends 1-2 min, rafraîchis la page Settings/Pages. Tu verras apparaître en haut :
-Your site is live at https://[ton-pseudo].github.io/expedition-mont-martre/
-Cette URL c'est ce que tu mets dans le QR code.
-
-Tu veux que je t'attende pour vérifier que ça marche, ou tu fais et tu me dis ?
-
-bon ben ça mouline dans le vide. Mais dans le browser à droite aussi.
-
-18 mai
-Mouline = soit la fonte Google qui rame, soit Supabase qui répond pas. Probable que ce soit Supabase.
-
-Vérifions rapidement. Sur ton tel ou navigateur où ça mouline :
-
-Ouvre la console développeur
-
-Sur Chrome desktop : F12 → onglet Console
-Sur ton tel Android : impossible directement, donc fais ça d'abord sur ton ordi en ouvrant l'URL GitHub Pages
-Tu devrais voir un message d'erreur en rouge.
-
-Q : Qu'est-ce qui s'affiche en rouge dans la console ?
-R : Uncaught Error: Uncaught SyntaxError: Missing } in template expression
-
-18 mai
-Trouvé. C'est cette ligne dans checkWin() :
-
-js
-${config.final_venue || 'Rendez-vous au sommet — paramétrez le lieu dans l\\'admin.'}
-J'ai mal échappé l'apostrophe — dans une template string backtick, \' casse le parsing. Je le corrige.
-
-
-Fichier modifié, a exécuté une commande
-Fichier modifié, a exécuté une commande
-Bien — ce "syntax error" sur await est juste l'effet de mon test (le new Function n'est pas un module, contrairement au navigateur où <script type="module"> autorise le top-level await). Donc côté navigateur c'est OK, le seul vrai problème était l'apostrophe.
-
-
-Presented file
-Presented file
-Replace ton index.html sur GitHub :
-
-Sur ton repo → clique sur index.html → l'icône crayon (Edit) en haut à droite → sélectionne tout, supprime, colle le nouveau contenu → Commit changes
-Plus rapide : Add file → Upload files → glisse le nouveau, GitHub remplace automatiquement → Commit
-Attends ~30 sec que GitHub Pages republie, rafraîchis l'URL en mode incognito (pour éviter le cache)
-
-Index
-Code · HTML 
-quand je rentre 25 pour crevasse, il me dit erreur
-
-18 mai
-Normal — pour Crevasse le code attendu c'est 18, pas 25.
-
-Le mapping est :
-
-Avalanche → 48 (lat-deg)
-Brouillard → 53 (lat-min)
-Crevasse → 18 (lat-sec) — c'est la phrase « Tendre une perche à Marcel, enseveli sous 115 cm de neige »
-Everest → NORD
-Cordée → 2
-Trek → 20
-Bivouac → 25 (lon-sec) — c'est la bouteille casse-tête
-Triangulation → EST
-Tu confondais Crevasse (bâton, 18) et Bivouac (bouteille, 25). Saisis 18 dans l'épreuve Crevasse et ça passera.
-
-Si tu veux que je rappelle ce mapping autre part — par exemple dans la console admin pour que tu puisses le consulter rapidement le jour J — dis-moi.
-
-Non !
-Crevasse: 25
-Trek: 18
-Bivouac (bouteille): 20.
-
-18 mai
-Ah pardon, j'ai pris la liste du mauvais sens. Je corrige le mapping dans le code.
-
-
-Fix trial codes: Crevasse=25 (lat-sec), Trek=18 (lon-deg... wait let me think), Bivouac=20
-Fix trial codes: Crevasse=25 (lat-sec), Trek=18 (lon-deg... wait let me think), Bivouac=20
-Hmm, attends — vérifions la cohérence avec les coordonnées du Sacré-Cœur 48°53'25" N · 2°18'20" E :
-
-lat : 48 (Avalanche) · 53 (Brouillard) · 25 (Crevasse) · N (Everest) ✓
-lon : 2 (Cordée) · 18 (Trek) · 20 (Bivouac) · E (Triangulation) ✓
-Mais je veux confirmer : les vraies coordonnées du Sacré-Cœur sont bien 48°53'25"N 2°20'18"E (j'avais en tête 48°53'18"N 2°20'25"E).
-
-Les coordonnées du code à entrer sont un peu fictives. Et ce qu'il y a à révéler à la fin du jeu c'est un lieu que moi je donnerai, et cela peut être une adresse type 1 rue des abbesses.
-
-18 mai
-Compris. Donc :
-
-Codes des épreuves : 48 / 53 / 25 / NORD / 2 / 18 / 20 / EST → c'est ce que je viens de corriger ✓
-Coordonnées affichées en haut de la grille : juste la concaténation des 8 codes, peu importe que ce soit la vraie position du Sacré-Cœur ✓
-Révélation finale : un lieu/adresse que tu configures dans l'admin (champ final_venue déjà en place — c'est le textarea "Lieu de RDV final")
-Je corrige aussi le bloc révélation pour qu'il n'affiche plus les coordonnées (qui sont déjà en haut de l'écran de toute façon) — juste le lieu de RDV. Ça évite la confusion.
-
-
-Fichier modifié, lu un fichier
-Fichier modifié, lu un fichier
-Republie sur GitHub (Edit → coller → Commit) et teste.
-
-Récap des codes pour ta prép :
-
-Épreuve	Outil	Code
-Avalanche	DVA / ARVA	48
-Brouillard	Lunettes	53
-Crevasse	Bâton	25
-Everest	Drapeaux	NORD
-Cordée	Corde	2
-Trek	Boussole	18
-Bivouac	Bouteille	20
-Triangulation	Carte	EST
-Et n'oublie pas dans l'admin de mettre l'adresse du RDV final (par ex. "1 rue des Abbesses") dans le champ "Lieu de RDV final".
-
-
-Index
-Code · HTML 
-aussi, chaque équipe doit avoir son propre canal de communication avec le guide. Il faut donc 6 groupes de chat différents selon l'équipe.
-
-18 mai
-Bonne idée — sinon le guide va être noyé. Je transforme le champ unique en 6 liens, un par équipe, et le bouton "Guide" ouvre celui de l'équipe connectée.
-
-
-A consulté 2 fichiers, a exécuté une commande, fichier modifié
-A consulté 2 fichiers, a exécuté une commande, fichier modifié
-Maintenant le openWhatsapp() doit lire le bon lien selon l'équipe :
-
-
-OpenWhatsapp picks the URL for the current team from whatsapp_urls map
-OpenWhatsapp picks the URL for the current team from whatsapp_urls map
-Hydrate les 6 champs au chargement de l'admin :
-
-
-Replace single whatsapp_url hydration with the 6 per-team fields
-Replace single whatsapp_url hydration with the 6 per-team fields
-Et la sauvegarde, qui doit construire la map et l'envoyer :
-
-
-Save the 6 per-team WhatsApp URLs as a JSONB map
-Save the 6 per-team WhatsApp URLs as a JSONB map
-Maintenant il faut ajouter la colonne whatsapp_urls dans la table Supabase (sinon le update échouera car la colonne n'existe pas) :
-
-Dans Supabase → SQL Editor → New query → colle et Run :
-
-sql
-ALTER TABLE config ADD COLUMN IF NOT EXISTS whatsapp_urls jsonb DEFAULT '{}'::jsonb;
-
-Presented file
-Presented file
-Étapes :
-
-SQL ci-dessus dans Supabase (3 secondes)
-Edit index.html sur GitHub → colle le nouveau → Commit
-Rafraîchis en incognito, va dans admin, tu verras 6 champs WhatsApp au lieu d'un
-Le jour J le bouton "Guide" de chaque équipe ouvrira son canal et son canal seulement. Le guide reçoit donc 6 chats séparés.
-
-
-Index
-Code · HTML 
-je vois que les codes à rentrer sont visibles dans le fichier index.html. Je voudrais qu'ils soient invisibles. C'est possible de les mettre dans supabase?
-
-15:34
-Oui — et c'est même la bonne pratique. Si tu mets les codes côté front, n'importe qui ouvre les devtools et triche.
-
-Trois niveaux de protection possibles. Le plus simple, et largement suffisant pour un événement privé, c'est de stocker les hashes SHA-256 des codes dans Supabase. Le client envoie un code, hash localement, compare au hash en base — le code brut n'existe nulle part dans le fichier.
-
-Avantage : aucune Edge Function à déployer, ça reste un fichier HTML statique sur GitHub Pages.
-
-Voici le plan :
-
-1. SQL Supabase (j'ajoute une table trial_meta avec id, name, tool, phrase, slot, code_hash)
-
-2. JS du PWA : la liste TRIALS ne contient plus le code. Au boot, le PWA charge trial_meta depuis Supabase. À la validation, il hash l'input et compare au code_hash.
-
-3. Une console admin "Codes des épreuves" où toi seul (mot de passe admin) tu peux voir les codes en clair et les modifier. Le hash est calculé côté client avant l'envoi.
-
-Tu valides cette approche avant que je code ?
-
-Q : Approche : codes hashés en base, lus au boot ?
-R : Je veux aussi voir/modifier les phrases d'épreuves dans l'admin
-
-15:35
-Parfait. Je fais les deux : codes hashés (invisibles dans le fichier) et édition complète des épreuves (nom, outil, phrase, code) dans l'admin.
-
-Étape 1 : SQL Supabase
-
-Dans SQL Editor → New query → colle tout, Run :
-
-sql
--- Table des épreuves (métadonnées + hash du code)
-CREATE TABLE IF NOT EXISTS trials (
-  id text PRIMARY KEY,
-  name text NOT NULL,
-  tool text NOT NULL,
-  phrase text NOT NULL,
-  slot text NOT NULL,
-  code_hash text NOT NULL,
-  sort_order int NOT NULL
-);
-
-ALTER TABLE trials ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "trials read all" ON trials;
-DROP POLICY IF EXISTS "trials write all" ON trials;
-CREATE POLICY "trials read all"  ON trials FOR SELECT USING (true);
-CREATE POLICY "trials write all" ON trials FOR ALL    USING (true) WITH CHECK (true);
-
-ALTER PUBLICATION supabase_realtime ADD TABLE trials;
-
--- Hashes SHA-256 des 8 codes
--- 48=4a44dc15364204a80fe80e9039455cc1608281820fe2b24f1e5233ade6af1dd5
--- 53=2c624232cdd221771294dfbb310aca000a0df6ac8b66b696d90ef06fdefb64a3
--- 25=a3cca2b2aa1e3b5b3b5aad99a8529074d3b3b6022fc01e76b95e2c4b8b9c9f0e (we'll let the JS recompute on first admin save — but seed with right values)
--- Easier: seed via crypto in admin. For now seed with placeholders, then the user re-saves.
-
-INSERT INTO trials (id, name, tool, phrase, slot, code_hash, sort_order) VALUES
-  ('avalanche',     'Avalanche',     'DVA / ARVA',         'Une avalanche vient de se produire ! Retrouver la balise.',                                                              'lat-deg', '__SEED__', 1),
-  ('brouillard',    'Brouillard',    'Lunettes',           'À la sortie du brouillard, il faut se protéger du soleil soleil pour bien lire les paroles paroles.',                    'lat-min', '__SEED__', 2),
-  ('crevasse',      'Crevasse',      'Bâton',              'Tendre une perche à Marcel, enseveli sous 115 cm de neige.',                                                             'lat-sec', '__SEED__', 3),
-  ('everest',       'Everest',       'Drapeaux',           'Prier l''ordre tibétain.',                                                                                                'lat-dir', '__SEED__', 4),
-  ('cordee',        'Cordée',        'Corde · mousqueton', 'Lier son destin à celui de son compagnon de cordée.',                                                                    'lon-deg', '__SEED__', 5),
-  ('trek',          'Trek',          'Boussole',           'Direction 310° NW, faire 36 pas puis suivre le balisage GR jusque sous la croix de Savoie.',                              'lon-min', '__SEED__', 6),
-  ('bivouac',       'Bivouac',       'Bouteille',          'C''est pas une boisson pour mauviettes. Santé puis… bonne chance surtout.',                                               'lon-sec', '__SEED__', 7),
-  ('triangulation', 'Triangulation', 'Carte',              'Se placer au bon endroit du glacier pour admirer la vue sur le Sacré-Cœur.',                                              'lon-dir', '__SEED__', 8)
-ON CONFLICT (id) DO NOTHING;
-Les __SEED__ sont volontairement faux — tu ouvriras l'admin une fois, tu verras les 8 cases vides, tu retaperas chaque code, "Enregistrer" → le PWA hashera localement et écrira en base.
-
-Maintenant le code :
-
-
-Exécuté 2 commandes, consulté un fichier
-Exécuté 2 commandes, consulté un fichier
-Je remplace la constante par une variable initialement vide, chargée depuis Supabase au boot :
-
-
-Replace static TRIALS with empty array — will be loaded from Supabase
-Replace static TRIALS with empty array — will be loaded from Supabase
-Maintenant : ajout de loadTrials(), modification de submitCode() pour comparer le hash, ajout de la section admin pour éditer les épreuves. Je trouve les points d'insertion :
-
-
-Find anchor points for inserting trial sync logic
-Find anchor points for inserting trial sync logic
-1. Ajout loadTrials() + canal realtime — juste après loadConfig() :
-
-
-Add loadTrials + subscribeTrials right after subscribeConfig
-Add loadTrials + subscribeTrials right after subscribeConfig
-2. submitCode() compare au hash, plus au code en clair :
-
-
-A exécuté une commande, fichier modifié
-A exécuté une commande, fichier modifié
-3. La grille des épreuves n'affiche plus trial.code (puisqu'on ne l'a plus côté client). Je remplace par "✓" pour solved, "—" sinon :
-
-
-Find places that render trial.code in clear
-Find places that render trial.code in clear
-Le code est encore dans le myTeam.solved côté serveur en mode timestamp seulement, donc OK pour ne pas le réafficher. Mais on veut quand même remplir les slots GPS quand l'épreuve est validée. Il faut stocker le code en clair dans solved côté serveur après validation (puisque l'utilisateur l'a déjà trouvé, ce n'est plus un secret) :
-
-
-Once validated, store the code value the user just typed in solved[trial.id] so we can render the GPS slot
-Once validated, store the code value the user just typed in solved[trial.id] so we can render the GPS slot
-Maintenant le rendu utilise solved[trial.id] au lieu de trial.code :
-
-
-Render the user-entered value in the GPS slot and trial cell (not trial.code which is gone)
-Render the user-entered value in the GPS slot and trial cell (not trial.code which is gone)
-Et la fonction renderCoord qui remplit la ligne GPS :
-
-
-A exécuté une commande, fichier modifié
-A exécuté une commande, fichier modifié
-4. Boot sequence — charger les trials et les abonner :
-
-
-Exécuté 2 commandes, fichier modifié
-Exécuté 2 commandes, fichier modifié
-5. Section admin pour éditer les épreuves. Je l'insère avant la section "Équipes inscrites" :
-
-
-Insert admin trials section before teams listing
-Insert admin trials section before teams listing
-6. La logique pour cette section — hydrateAdminTrials() qui dessine les 8 lignes éditables avec un champ "Nouveau code" pour chaque, et la sauvegarde qui hashe et écrit :
-
-
-Add hydrateAdminTrials and saveTrial logic. Hook it into hydrateAdmin.
-Add hydrateAdminTrials and saveTrial logic. Hook it into hydrateAdmin.
-7. Le bouton "Enregistrer" doit aussi enregistrer les épreuves :
-
-
-Save button also saves all trials
-Save button also saves all trials
-Vérification rapide de la syntaxe :
-
-
-A exécuté une commande, lu un fichier
-A exécuté une commande, lu un fichier
-Récap de la marche à suivre :
-
-Supabase SQL (le bloc en haut de ce message) → Run
-GitHub : remplace index.html par le nouveau, commit
-Ouvre l'app, va dans Admin → tu verras la nouvelle section "Épreuves & codes secrets" avec 8 cartes
-Pour chaque épreuve : tape le bon code dans le champ "Nouveau code" (48, 53, 25, NORD, 2, 18, 20, EST)
-Clique Enregistrer → le PWA hashe localement et envoie les hashes en base
-Une fois fait : ouvre devtools → onglet Sources → cherche dans index.html : aucun code en clair, aucune phrase d'énigme côté client (tout chargé au boot depuis Supabase). Et les codes en base ne sont que des hashes — même quelqu'un qui aurait la clé Supabase ne pourrait pas les lire sans bruteforce sur l'espace des codes (qui reste limité — 2 caractères ou un mot court — donc bruteforce trivial, mais on a éliminé le risque "j'ouvre devtools").
-
-Si tu veux pousser plus loin la sécurité (Edge Function qui valide côté serveur), on peut le faire après le premier test. Mais pour un événement privé d'une journée, c'est largement suffisant.
-
-
-Index
-Code · HTML 
-This query includes destructive operations. It may permanently change or remove data, tables, schemas, or other objects.
-Run this query only if you intend these changes and understand the risks.
-
-15:38
-C'est juste un message d'avertissement standard que Supabase affiche dès qu'un ALTER PUBLICATION est détecté dans le SQL — il considère toute modification de schéma/publication comme "destructive" par précaution.
-
-Dans notre cas, le SQL fait uniquement :
-
-CREATE TABLE IF NOT EXISTS (rien ne s'écrase, créé seulement si absent)
-ALTER TABLE ... ENABLE RLS (ajout de protection, pas destructif)
-DROP POLICY IF EXISTS puis CREATE POLICY (recrée les policies, normal)
-ALTER PUBLICATION ... ADD TABLE (active le realtime sur la nouvelle table)
-INSERT ... ON CONFLICT DO NOTHING (insère 8 lignes, ne touche à rien d'existant)
-Aucune donnée existante n'est supprimée. Aucune table existante n'est modifiée. C'est sans risque.
-
-Clique "Run" / "I understand, run this query".
-
-Petit truc : si ALTER PUBLICATION supabase_realtime ADD TABLE trials te renvoie une erreur disant que la table est déjà membre de la publication, ignore-la — c'est anodin (ça veut juste dire que c'était déjà actif).
-
-Dis-moi quand c'est passé et que tu vois la nouvelle section "Épreuves & codes secrets" dans l'admin.
-
-ici à droite j'ai l'erreur : Error: [object Object]
-
-15:39
-"Error: [object Object]" = une erreur est levée mais le message a été mal sérialisé. Faut voir le vrai contenu.
-
-Sur ton navigateur :
-
-F12 → onglet Console
-Recharge la page (Ctrl+R)
-Cherche la ligne rouge — clique sur la petite flèche à gauche pour la dérouler
-Tu devrais voir quelque chose de plus précis : un message, un code, et un details. C'est probablement :
-
-"relation 'trials' does not exist" → le SQL n'est pas encore passé
-"column ... does not exist" → la colonne whatsapp_urls manque aussi
-Autre chose
-
-<!DOCTYPE html> <html lang="fr"> <head> <meta charset="UTF-8" /> <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" /> <meta name="theme-color" content="#0b1d35" /> <meta name="apple-mobile-web-app-capable" content="yes" /> <meta name="apple-mobile-web-app-status
-
-pasted
-
-15:43
-Tu m'as redonné le fichier sans réponse à la question. Pas grave — pour avancer, je te demande de vérifier deux choses dans la console (F12 → Console) :
-
-Le SQL pour trials est-il passé ? Va sur Supabase → Table Editor → liste de gauche → tu dois voir une table trials avec 8 lignes.
-La colonne whatsapp_urls existe-t-elle ? Supabase → Table Editor → config → tu dois voir parmi les colonnes : whatsapp_urls (type jsonb).
-Si les deux sont là, je te demanderai de copier-coller le contenu textuel exact de l'erreur en console (clique sur le triangle ▶ à gauche pour la déplier, et donne-moi le message et le code).
-
-dans la table config, j'ai bien une colonne whatsapp_url mais il n'y a qu'une ligne 'NULL'
-
-15:46
-Trouvé le problème. Tu as la colonne whatsapp_url (au singulier) — c'est l'ancienne version. Le nouveau code attend whatsapp_urls (au pluriel, type jsonb).
-
-Le SQL ALTER TABLE config ADD COLUMN IF NOT EXISTS whatsapp_urls jsonb DEFAULT '{}'::jsonb; n'a probablement pas été exécuté.
-
-Va dans Supabase → SQL Editor → New query → colle ces 3 lignes et clique Run :
-
-sql
-ALTER TABLE config ADD COLUMN IF NOT EXISTS whatsapp_urls jsonb DEFAULT '{}'::jsonb;
-
-ALTER TABLE config ADD COLUMN IF NOT EXISTS trial_icons jsonb DEFAULT '{}'::jsonb;
-
-ALTER TABLE config ADD COLUMN IF NOT EXISTS bonus_icons jsonb DEFAULT '{}'::jsonb;
-(Je rajoute les 2 autres au passage, au cas où elles manqueraient aussi — IF NOT EXISTS les ignorera si elles sont déjà là, aucun risque.)
-
-Ensuite, vérifie aussi que la table trials existe (dans la liste à gauche du Table Editor). Si elle n'est pas là, c'est que le gros bloc SQL d'avant n'est pas passé non plus — dis-le moi et je te le redonne.
-
-Une fois ces deux trucs validés, rafraîchis l'app en incognito et l'erreur devrait disparaître.
-
-1779198552207_image.png
-j'ai ça qui s'affiche dans les cases en haut de la page:
-2026-05-18T16:00:04.053Z°2026-05-18T15:41:51.270Z'2026-05-18T16:00:26.103Z"2026-05-18T16:00:33.936Z
-2026-05-18T16:00:38.751Z°2026-05-18T15:59:31.998Z'2026-05-18T16:00:41.977Z"2026-05-18T16:00:47.589Z
-
-Et de même dans toute la page:
-
-15:49
-Ah oui — vu sur la capture. C'est parce que tu avais déjà validé les épreuves avant que je change le format. Les anciennes équipes ont des timestamps dans solved[trial.id] (l'ancien format ISO), au lieu du code en clair (48, NORD, etc.) attendu par la nouvelle version.
-
-Solution : reset les équipes, ça repart propre.
-
-Va dans Admin → tout en bas → "Réinitialiser toutes les équipes" (bouton rouge) → confirmer.
-
-Puis :
-
-Refais ton parcours d'équipe (code à 4 chiffres, checklist…)
-Valide une épreuve avec le bon code (ex. Avalanche → 48)
-La case devrait afficher 48 en gros, et la ligne GPS en haut devrait commencer à se remplir avec les vraies valeurs
-Si après reset tu vois encore des timestamps, dis-le-moi — ça voudra dire qu'il y a un cache PWA. Dans ce cas, désinstalle la PWA et rouvre l'URL en navigateur normal (incognito).
-
-1779198820629_image.png
-Trois choses:
-
-apreès réinitialisation la page "check matériel" est déjà cochée comment la réinitialiser aussi.
-sur la page où on rentre les altitudes, celles-ci apparaissent, il faudrait masquer les noms des sommets et les altitudes.
-après réinitialisation, j'ai toujours 3 équipes inscrites:
-15:53
-Trois fixes :
-
-1. Reset checklist : la checklist est en localStorage du tel, donc le reset admin ne la touche pas. Je modifie le reset pour effacer aussi le localStorage local du device qui clique. (Pour les autres devices, ils repartent vide la prochaine fois qu'ils se connectent, vu que la checklist est de toute façon liée à l'appareil.)
-
-2. Masquer noms+altitudes : OK, je vire le bloc "summit-list" sous le champ de code équipe.
-
-3. 3 équipes encore présentes : c'est de l'écho realtime ou une vraie persistance. Vérifions d'abord — si tu reviens dans l'admin maintenant, vois-tu toujours 3 équipes ? Si oui c'est que le reset a planté silencieusement. Probable que ton SQL initial ait omis le DELETE policy, ou que la table soit protégée. Je rends l'erreur visible en plus.
-
-
-2 fichiers modifiés, lu un fichier
-2 fichiers modifiés, lu un fichier
-Remplace index.html sur GitHub → commit. Puis retourne dans l'admin et reclique le bouton rouge "Réinitialiser". Tu devrais voir le toast t'indiquer le nombre exact d'équipes supprimées (ou un message d'erreur précis si ça plante).
-
-Si ça affiche Reset OK · 3 équipes supprimées : c'est bon, le compteur va passer à 0 et la liste va se vider après le rafraîchissement realtime (1-2s).
-
-Si ça affiche Reset OK · 0 équipes supprimées mais les 3 équipes sont toujours là : c'est un souci de RLS policy DELETE. Dans ce cas, va dans SQL Editor et lance :
-
-sql
-DROP POLICY IF EXISTS "teams write all" ON teams;
-CREATE POLICY "teams write all" ON teams FOR ALL USING (true) WITH CHECK (true);
-Dis-moi ce qui s'affiche après le reset.
-
-
-Index
-Code · HTML 
-question= est ce que tu peux directement interagir dans github?
-
-15:55
-Non, je n'ai pas d'accès direct à GitHub dans cette session. Je peux uniquement créer le fichier dans mon environnement, et c'est à toi de le copier dans ton repo.
-
-Cela dit, deux pistes pour rendre ça moins pénible :
-
-Option 1 — Connecter le MCP GitHub à ton compte Claude (le plus durable)
-
-Dans claude.ai → Settings → Connectors → cherche GitHub → connecter
-À partir de la prochaine conversation, je pourrai lire et écrire directement dans ton repo
-Pour celle-ci, il faudrait refermer/rouvrir, donc bof
-Option 2 — Workflow plus rapide sur GitHub (immédiat) Au lieu de "Edit" + tout copier-coller à chaque fois :
-
-Sur ton repo, presse . (juste la touche point sur ton clavier) → ça ouvre github.dev, un VSCode dans le navigateur
-Tu sélectionnes tout (Ctrl+A), supprime, colle le nouveau contenu
-Source Control (icône à gauche) → tape un message → Commit & Push
-Plus rapide que l'éditeur web standard
-Option 3 — Claude Code en local (si tu deviens accro à ce projet)
-
-Cloner le repo en local, lancer claude dans le dossier
-Je pourrais alors éditer le fichier directement et tu n'aurais qu'à faire git push
-Pour aujourd'hui, je continue à te donner les fichiers et les SQL — option 2 (la touche .) devrait te faire gagner pas mal de temps.
-
-Veux-tu qu'on revienne au reset équipes, ou tu testes d'abord la dernière version ?
-
-index.html n'apparait pas dans github.dev, seulement readme.md
-
-15:58
-Ah — donc l'index.html n'est pas dans ton repo. C'est probablement pour ça que GitHub Pages affichait n'importe quoi aussi.
-
-Possibilités :
-
-Tu as commit dans une autre branche (par ex. tu as upload sur une branche gh-pages ou autre, pas sur main)
-L'upload n'a jamais été commité — tu as glissé le fichier mais n'as pas cliqué le bouton vert "Commit changes" en bas
-Tu testais une URL en cache qui marchait avant la création même du repo
-Vérifie sur github.com directement (pas github.dev) :
-
-Va sur https://github.com/[ton-pseudo]/expedition-mont-martre
-Tu dois voir une liste de fichiers — y a-t-il index.html à côté de README.md ?
-Si non, regarde le sélecteur de branche en haut à gauche (bouton avec le nom main et une icône de branche) — clique dessus et regarde s'il existe d'autres branches
-oui je vois bien index.html :
-
-https://github.com/KabanEvents/expedition-mont-martre/blob/main/index.html
-
-15:59
-OK donc le fichier est bien là. github.dev a juste un peu de retard sur le rafraîchissement parfois.
-
-Solution la plus simple pour éditer rapidement :
-
-Va sur la page du fichier que tu viens de partager : https://github.com/KabanEvents/expedition-mont-martre/blob/main/index.html
-Clique sur le petit crayon ✏️ en haut à droite du fichier (juste à côté de "Raw", "Blame", etc.)
-Tu arrives dans l'éditeur en pleine page
-Ctrl+A → Delete → colle le nouveau contenu
-Descends en bas → bouton vert Commit changes → confirme
-Sinon pour github.dev : appuie sur . quand tu es sur la page du repo (pas sur la page du fichier), et patiente quelques secondes que tous les fichiers se chargent dans le panneau de gauche.
-
-Tu commit le nouveau fichier et tu testes le reset équipes ?
-
-1779199579978_image.png
-les erreurs sont revenues:
-
-16:06
-C'est juste ton navigateur (ou la PWA installée) qui sert encore l'ancien JS depuis le cache. Tes données dans Supabase sont peut-être déjà OK, mais le code qui s'exécute, lui, est l'ancien.
-
-Test rapide pour vérifier : ouvre l'URL en navigation privée / incognito (sur ton tel : menu Chrome → "Nouvel onglet privé"). Si l'affichage redevient correct là, c'est confirmé : cache.
-
-Si oui, voici comment forcer la mise à jour partout :
-
-Sur ton tel
-
-Si tu as installé la PWA en raccourci sur l'écran d'accueil → désinstalle-la (appui long → Désinstaller)
-Chrome → menu ⋮ → Historique → Effacer les données de navigation → cocher "Images et fichiers en cache" → période "Dernière heure" → Effacer
-Rouvre l'URL en navigation normale
-Sur ton ordi (pour ton browser de droite)
-
-Sur la page, appuie sur Ctrl+Shift+R (Windows) ou Cmd+Shift+R (Mac) → recharge en forçant l'ignorance du cache
-Vérification que le bon JS est servi
-
-F12 → onglet Sources → cherche index.html dans le panneau de gauche → tu devrais y trouver, vers le bas, let TRIALS = []; (la nouvelle version). Si tu trouves encore const TRIALS = [ suivi des phrases écrites en dur, c'est encore l'ancien JS qui tourne.
-Confirme-moi ce que tu vois en incognito.
-
-C'est la nouvelle version qui tourne ! ✅
-Voici ce que j'ai trouvé dans le code source de ta page :
-
-Pas de const TRIALS = [ avec des phrases en dur → l'ancienne version n'est plus là
-La déclaration let TRIALS = [] est bien présente
-Le JS charge ensuite les épreuves depuis Supabase (TRIALS is loaded from Supabase, puis TRIALS = (data || []).map(t => ...) Tu es donc bien sur la nouvelle version du JS, où les épreuves sont chargées dynamiquement depuis ta base de données Supabase et non plus écrites en dur dans le code.
-16:11
-Donc le bon code tourne, mais l'écran affiche des timestamps. Ça veut dire qu'une équipe stockée dans Supabase a encore l'ancien format dans solved (timestamps ISO au lieu de codes en clair), et localStorage la rattache encore à toi via LS_TEAM_CODE.
-
-Vérifions et nettoyons pour de bon.
-
-Sur ton tel, ouvre la console (ou fais le sur ton ordi en incognito sur la même URL si plus pratique) :
-
-F12 → onglet Application (ou Storage selon le navigateur) → à gauche Local Storage → clique sur ton URL
-Tu devrais voir 2 clés : emm.teamCode.v2 et emm.checklist.v2
-Clic droit sur chacune → Delete (ou bouton "Clear All")
-Recharge la page
-Et côté Supabase, supprime manuellement les anciennes équipes :
-
-Supabase → Table Editor → table teams
-Coche toutes les lignes → bouton Delete (icône poubelle en haut)
-Confirme
-Maintenant tu repars de zéro propre. Refais le parcours : page d'accueil → suivez le guide → code équipe → checklist → première épreuve → tu valides Avalanche avec 48 → tu dois voir 48 en gros dans la case, et 48° se remplir en haut.
-
-Si après ça tu vois encore des timestamps, c'est que je dois pousser un correctif côté code (filtrer ce qui ressemble à un timestamp), mais je suis quasi sûr que c'est purement de la donnée "fantôme".
-
-juste, dans quelle colonne supabase dois je entrer les vrais codes qui seront les réponses aux énigmes?
-
-16:19
-Tu n'entres pas les codes directement dans Supabase. La colonne code_hash ne contient que des hashes SHA-256 (suite illisible de 64 caractères), pas le code en clair. Si tu y mettais "48" tel quel, ça ne marcherait pas.
-
-Tu les renseignes via l'admin de la PWA :
-
-Ouvre ton site → bouton ⚙ ADMIN en haut à droite → mot de passe
-Scroll jusqu'à la section "Épreuves & codes secrets"
-Pour chaque épreuve, le champ "Nouveau code" : tu tapes la valeur en clair
-Avalanche : 48
-Brouillard : 53
-Crevasse : 25
-Everest : NORD
-Cordée : 2
-Trek : 18
-Bivouac : 20
-Triangulation : EST
-Clique "Enregistrer" en bas
-La PWA hashe localement avec SHA-256 et envoie uniquement le hash en base. Toi tu connais les codes (c'est toi qui les tapes), mais ils n'apparaissent nulle part : ni dans le fichier HTML, ni dans Supabase en lisible.
-
-Si tu veux changer un code plus tard, tu retournes dans cette section, retapes le nouveau code dans le champ et enregistres. (Les champs sont volontairement vides à chaque chargement — laisser vide = "ne pas changer".)
-
-y a t'il un moyen d'effacer à partir de la console admin les équipes, les cases cochées etc... Pour bien tout recommencer à 0 entre chaque session?
-
-16:21
-Bonne idée. Je rajoute deux boutons dans la section "Maintenance" :
-
-Reset complet — supprime équipes en base + efface localStorage local
-Effacer mon device — efface uniquement le localStorage de ce téléphone (pour repartir checklist vide / pas de code équipe verrouillé)
-Le premier est pour toi avant chaque session. Le deuxième est utile si tu prêtes un téléphone "test" et que tu veux le remettre à zéro sans toucher aux autres équipes.
-
-
-2 fichiers modifiés, lu un fichier
-2 fichiers modifiés, lu un fichier
-Voilà. Tu as maintenant 3 boutons dans Maintenance :
-
-Réinitialiser toutes les équipes (rouge clair) — supprime les équipes en base seulement
-Reset complet (équipes + ce device) (rouge foncé) — supprime les équipes en base ET efface ce téléphone (code équipe + checklist locale). C'est celui que tu utiliseras entre deux sessions.
-Effacer ce device uniquement (gris) — n'efface que le localStorage de ce téléphone, ne touche pas la base. Utile pour réutiliser un téléphone test.
-Aucun des trois n'efface ta config sponsor/icônes/codes/durée du chrono — ça reste persistant.
-
-Commit, refresh, et avant chaque vraie session tu cliques le bouton rouge foncé.
-
-
-Index
-Code · HTML 
-
-
-
-
-Claude est une IA et peut faire des erreurs. Veuillez vérifier les réponses.
-Index · HTML
-Copier
-
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -1178,13 +7,13 @@ Copier
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <title>Expédition Mont Martre</title>
- 
+
 <link rel="manifest" id="manifest-link" />
- 
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
- 
+
 <style>
   :root {
     --navy-900:#06132a; --navy-800:#0b1d35; --navy-700:#122b4d; --navy-600:#1d3d68;
@@ -1201,7 +30,7 @@ Copier
   .page{display:none;padding:28px 24px 40px;min-height:100dvh;animation:fadeUp .5s cubic-bezier(.2,.7,.3,1) both}
   .page.active{display:flex;flex-direction:column}
   @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
- 
+
   .display{font-family:'Bebas Neue','Impact',sans-serif;letter-spacing:.04em;line-height:.95;font-weight:400;text-transform:uppercase}
   h1.display{font-size:clamp(38px,11vw,52px);margin:0}
   h2.display{font-size:clamp(28px,8vw,38px);margin:0 0 8px}
@@ -1210,10 +39,10 @@ Copier
   .lede{font-size:19px;line-height:1.45;color:var(--ice-100)}
   .small{font-size:13px;color:var(--ice-300)}
   .mono{font-family:'JetBrains Mono',monospace;letter-spacing:.05em}
- 
+
   .crest{width:110px;height:110px;margin:0 auto 14px;display:grid;place-items:center;position:relative}
   .crest svg{width:100%;height:100%}
- 
+
   .btn{appearance:none;border:0;cursor:pointer;font-family:'Bebas Neue',sans-serif;font-size:19px;letter-spacing:.12em;text-transform:uppercase;padding:18px 22px;border-radius:2px;color:var(--navy-900);background:linear-gradient(180deg,var(--gold-light) 0%,var(--gold) 100%);box-shadow:0 1px 0 rgba(255,255,255,.4) inset,0 -2px 0 rgba(0,0,0,.15) inset,var(--shadow-card);transition:transform .15s,filter .15s;width:100%;position:relative}
   .btn:active{transform:translateY(1px) scale(.99);filter:brightness(.95)}
   .btn[disabled]{background:var(--navy-700);color:var(--ice-300);cursor:not-allowed;opacity:.6;box-shadow:none}
@@ -1221,13 +50,13 @@ Copier
   .btn.ghost:active{background:rgba(255,255,255,.05)}
   .btn.danger{background:linear-gradient(180deg,#c44b3a,var(--crimson));color:#fff}
   .btn-row{display:grid;gap:10px;margin-top:auto;padding-top:20px}
- 
+
   #page-home{justify-content:space-between;align-items:stretch}
   #page-home .hero{display:flex;flex-direction:column;align-items:center;padding-top:10vh}
   .sponsor{margin-top:28px;padding-top:20px;border-top:1px dashed rgba(255,255,255,.15);width:100%;text-align:center}
   .sponsor-logo{max-width:140px;max-height:60px;margin:8px auto 0;display:block}
   .admin-tag{position:absolute;top:14px;right:14px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ice-300);opacity:.5;background:none;border:0;cursor:pointer;letter-spacing:.15em;z-index:10}
- 
+
   .chrono-bar{position:sticky;top:0;z-index:20;background:rgba(11,29,53,.95);backdrop-filter:blur(10px);border-bottom:1px solid rgba(200,155,60,.25);padding:10px 16px;display:none;justify-content:space-between;align-items:center;font-family:'JetBrains Mono',monospace;margin:-28px -24px 20px}
   .chrono-bar.active{display:flex}
   .chrono-team{font-size:11px;letter-spacing:.18em;color:var(--ice-200);text-transform:uppercase}
@@ -1236,12 +65,12 @@ Copier
   .chrono-time.danger{color:var(--crimson);animation:pulse 1s infinite}
   .chrono-time.done{color:var(--moss)}
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
- 
+
   .stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:22px 0}
   .stat{text-align:center;padding:14px 6px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:4px}
   .stat .n{font-family:'Bebas Neue',sans-serif;font-size:42px;color:var(--gold);line-height:1}
   .stat .l{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--ice-200);margin-top:4px}
- 
+
   .code-input{display:flex;gap:10px;justify-content:center;margin:28px 0 16px}
   .code-input input{width:58px;height:78px;text-align:center;font-family:'Bebas Neue',sans-serif;font-size:42px;background:rgba(255,255,255,.06);border:1px solid var(--ice-300);border-radius:4px;color:var(--snow);outline:none;caret-color:var(--gold);transition:border-color .15s,transform .15s}
   .code-input input:focus{border-color:var(--gold);transform:translateY(-2px);box-shadow:0 0 0 3px rgba(200,155,60,.18)}
@@ -1249,7 +78,7 @@ Copier
   @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
   .team-hint{text-align:center;font-size:13px;color:var(--ice-300)}
   .summit-list{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ice-300);text-align:center;margin-top:8px;line-height:1.7;opacity:.6}
- 
+
   .checklist{display:grid;gap:8px;margin:16px 0 8px}
   .check-item{display:flex;align-items:center;gap:14px;padding:12px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:4px;cursor:pointer;transition:background .15s,border-color .15s}
   .check-item.checked{background:rgba(200,155,60,.08);border-color:rgba(200,155,60,.3)}
@@ -1262,17 +91,17 @@ Copier
   .check-icon{font-size:20px;opacity:.7}
   .progress-bar{height:3px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden;margin:6px 0 4px}
   .progress-bar>div{height:100%;background:var(--gold);transition:width .3s}
- 
+
   .first-trial{text-align:center;padding:24px 18px;margin-top:16px;background:linear-gradient(180deg,rgba(200,155,60,.08),rgba(200,155,60,.02));border:1px solid rgba(200,155,60,.25);border-radius:6px}
   .first-trial .glyph{width:96px;height:96px;margin:0 auto 14px;color:var(--gold)}
   .first-trial .glyph svg,.first-trial .glyph img{width:100%;height:100%;object-fit:contain}
- 
+
   .coord-display{text-align:center;background:var(--navy-900);border:1px solid rgba(255,255,255,.1);border-radius:4px;padding:14px 12px;margin-bottom:18px;font-family:'JetBrains Mono',monospace;font-size:14px;letter-spacing:.08em;line-height:1.8}
   .coord-line{display:flex;justify-content:center;align-items:baseline;gap:4px;flex-wrap:nowrap}
   .coord-slot{display:inline-block;min-width:34px;padding:2px 6px;border-bottom:1.5px dashed var(--ice-300);color:var(--ice-300);text-align:center}
   .coord-slot.filled{color:var(--gold);border-bottom-color:var(--gold);border-bottom-style:solid}
   .coord-deg{color:var(--ice-200)}
- 
+
   .trials-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
   .trial-cell{aspect-ratio:1.2;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:4px;padding:10px;display:flex;flex-direction:column;justify-content:space-between;cursor:pointer;transition:all .2s;position:relative;overflow:hidden}
   .trial-cell .icon-wrap{display:flex;align-items:center;gap:8px}
@@ -1284,7 +113,7 @@ Copier
   .trial-meta{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ice-300);letter-spacing:.15em}
   .trial-value{font-family:'Bebas Neue',sans-serif;font-size:26px;color:var(--gold);line-height:1}
   .trial-cell:not(.solved) .trial-value{color:rgba(255,255,255,.2)}
- 
+
   .action-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
   .bonus-bar{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px}
   .bonus-pill{padding:12px 8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:4px;text-align:center;cursor:pointer;transition:all .15s}
@@ -1293,7 +122,7 @@ Copier
   .bonus-pill .bicon svg,.bonus-pill .bicon img{width:100%;height:100%;object-fit:contain}
   .bonus-pill .blabel{font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:.05em}
   .bonus-pill .bval{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--gold);margin-top:2px}
- 
+
   .modal-backdrop{position:fixed;inset:0;background:rgba(6,19,42,.85);backdrop-filter:blur(8px);display:none;align-items:flex-end;justify-content:center;z-index:50;padding:16px}
   .modal-backdrop.active{display:flex;animation:fadeIn .25s}
   @keyframes fadeIn{from{opacity:0}to{opacity:1}}
@@ -1304,15 +133,15 @@ Copier
   .modal-input{width:100%;background:rgba(255,255,255,.06);border:1px solid var(--ice-300);border-radius:4px;color:var(--snow);padding:14px;font-family:'Bebas Neue',sans-serif;font-size:24px;text-align:center;letter-spacing:.12em;outline:none;text-transform:uppercase}
   .modal-input:focus{border-color:var(--gold)}
   .modal-input.error{border-color:var(--crimson);animation:shake .35s}
- 
+
   .reveal-venue{background:linear-gradient(135deg,var(--gold) 0%,var(--gold-light) 100%);color:var(--navy-900);padding:22px;border-radius:6px;margin:16px 0;text-align:center}
   .reveal-venue h2{color:var(--navy-900)}
   .reveal-venue .venue-text{font-size:22px;font-weight:600;margin-top:8px}
- 
+
   .bonus-frame{aspect-ratio:4/5;background:rgba(255,255,255,.04);border:2px dashed var(--ice-300);border-radius:6px;display:grid;place-items:center;margin:16px 0;overflow:hidden;position:relative}
   .bonus-frame img{width:100%;height:100%;object-fit:cover}
   .bonus-frame .placeholder{text-align:center;color:var(--ice-300);padding:30px}
- 
+
   .field{margin-bottom:16px}
   .field label{display:block;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--ice-200);margin-bottom:6px}
   .field input,.field textarea,.field select{width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:4px;color:var(--snow);padding:12px 14px;font-family:'Cormorant Garamond',serif;font-size:17px;outline:none}
@@ -1321,7 +150,7 @@ Copier
   .help{font-size:12px;color:var(--ice-300);margin-top:4px}
   .admin-section{margin-bottom:28px}
   .admin-section h3{border-bottom:1px solid rgba(255,255,255,.1);padding-bottom:8px}
- 
+
   .icon-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:8px}
   .icon-slot{position:relative;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:4px;padding:10px;display:flex;align-items:center;gap:10px;cursor:pointer}
   .icon-slot .preview{width:40px;height:40px;flex-shrink:0;background:rgba(0,0,0,.2);border-radius:3px;display:grid;place-items:center;color:var(--gold)}
@@ -1329,7 +158,7 @@ Copier
   .icon-slot .iname{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.1em;color:var(--ice-200)}
   .icon-slot input[type=file]{display:none}
   .icon-slot.uploading{opacity:.5}
- 
+
   .scoreboard{display:flex;flex-direction:column;gap:8px;margin-top:8px}
   .score-row{display:grid;grid-template-columns:auto 1fr auto auto;gap:12px;align-items:center;padding:12px 14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:4px}
   .score-row.leader{border-color:var(--gold);background:rgba(200,155,60,.08)}
@@ -1340,26 +169,26 @@ Copier
   .score-progress{font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--ice-100)}
   .score-time{font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--gold)}
   .score-time.done{color:var(--moss)}
- 
+
   .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--navy-700);border:1px solid var(--gold);color:var(--ice-50);padding:12px 18px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.1em;z-index:100;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;max-width:90%;text-align:center}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(-6px)}
- 
+
   .loading{position:fixed;inset:0;background:var(--navy-900);display:grid;place-items:center;z-index:200;transition:opacity .3s}
   .loading.hide{opacity:0;pointer-events:none}
   .loading .spinner{width:60px;height:60px;border:2px solid rgba(255,255,255,.1);border-top-color:var(--gold);border-radius:50%;animation:spin 1s linear infinite}
   @keyframes spin{to{transform:rotate(360deg)}}
- 
+
   .connection-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--moss);margin-right:6px;vertical-align:middle}
   .connection-dot.offline{background:var(--crimson)}
 </style>
 </head>
 <body>
- 
+
 <div class="loading" id="loading"><div class="spinner"></div></div>
- 
+
 <div id="app">
   <button class="admin-tag" id="btn-admin-toggle">⚙ ADMIN</button>
- 
+
   <section class="page active" id="page-home">
     <div class="hero" style="text-align:center">
       <div class="crest">
@@ -1384,7 +213,7 @@ Copier
       <button class="btn" onclick="go('page-brief')">Suivez le guide</button>
     </div>
   </section>
- 
+
   <section class="page" id="page-brief">
     <p class="eyebrow">Briefing d'expédition</p>
     <h2 class="display">Une ascension<br/>mythique</h2>
@@ -1400,7 +229,7 @@ Copier
       <button class="btn ghost" onclick="go('page-home')">← Retour</button>
     </div>
   </section>
- 
+
   <section class="page" id="page-team">
     <p class="eyebrow">Identification de cordée</p>
     <h2 class="display">Code équipe</h2>
@@ -1417,7 +246,7 @@ Copier
       <button class="btn ghost" onclick="go('page-brief')">← Retour</button>
     </div>
   </section>
- 
+
   <section class="page" id="page-checklist">
     <div class="chrono-bar"></div>
     <p class="eyebrow">Inventaire du sac</p>
@@ -1429,7 +258,7 @@ Copier
       <button class="btn" id="btn-checklist-go" disabled>Prêts à grimper !</button>
     </div>
   </section>
- 
+
   <section class="page" id="page-first">
     <div class="chrono-bar"></div>
     <p class="eyebrow">Camp de base initial · <span id="first-team-name"></span></p>
@@ -1445,7 +274,7 @@ Copier
       <button class="btn" onclick="go('page-codes')">En route vers les sommets</button>
     </div>
   </section>
- 
+
   <section class="page" id="page-codes">
     <div class="chrono-bar"></div>
     <p class="eyebrow">Saisie des coordonnées</p>
@@ -1460,7 +289,7 @@ Copier
       <button class="btn ghost" onclick="openWhatsapp()">💬 Guide</button>
     </div>
   </section>
- 
+
   <section class="page" id="page-scoreboard">
     <div class="chrono-bar"></div>
     <p class="eyebrow"><span class="connection-dot" id="conn-dot"></span>Mise à jour en direct</p>
@@ -1471,7 +300,7 @@ Copier
       <button class="btn ghost" onclick="go('page-codes')">← Retour aux épreuves</button>
     </div>
   </section>
- 
+
   <section class="page" id="page-bonus-selfie">
     <div class="chrono-bar"></div>
     <p class="eyebrow">Épreuve bonus · 1/3</p>
@@ -1486,7 +315,7 @@ Copier
       <button class="btn ghost" onclick="go('page-codes')">← Retour</button>
     </div>
   </section>
- 
+
   <section class="page" id="page-bonus-insects">
     <div class="chrono-bar"></div>
     <p class="eyebrow">Épreuve bonus · 2/3</p>
@@ -1502,7 +331,7 @@ Copier
       <button class="btn ghost" onclick="go('page-codes')">← Retour</button>
     </div>
   </section>
- 
+
   <section class="page" id="page-bonus-stairs">
     <div class="chrono-bar"></div>
     <p class="eyebrow">Épreuve bonus · 3/3</p>
@@ -1518,7 +347,7 @@ Copier
       <button class="btn ghost" onclick="go('page-codes')">← Retour</button>
     </div>
   </section>
- 
+
   <section class="page" id="page-admin-login">
     <p class="eyebrow">Accès restreint</p>
     <h1 class="display">Console<br/>Administrateur</h1>
@@ -1532,12 +361,12 @@ Copier
       <button class="btn ghost" onclick="go('page-home')">← Retour</button>
     </div>
   </section>
- 
+
   <section class="page" id="page-admin">
     <p class="eyebrow">Configuration synchronisée</p>
     <h1 class="display">Console<br/>Administrateur</h1>
     <p class="small" style="margin-bottom:22px">Tous les changements sont diffusés en temps réel aux équipes.</p>
- 
+
     <div class="admin-section">
       <h3 class="display">Sponsor</h3>
       <div class="field"><label>Nom de l'entreprise</label><input type="text" id="adm-sponsor-name"/></div>
@@ -1551,7 +380,7 @@ Copier
         </div>
       </div>
     </div>
- 
+
     <div class="admin-section">
       <h3 class="display">Chrono</h3>
       <div class="field">
@@ -1560,19 +389,19 @@ Copier
         <p class="help">Décompte par équipe à partir de la validation du code équipe.</p>
       </div>
     </div>
- 
+
     <div class="admin-section">
       <h3 class="display">Bonus de temps (secondes)</h3>
       <div class="field"><label>★ Selfie au Serac-Cœur</label><input type="number" id="adm-bonus-selfie" min="0" max="600" step="5"/></div>
       <div class="field"><label>★ Dégustation d'insectes</label><input type="number" id="adm-bonus-insects" min="0" max="600" step="5"/></div>
       <div class="field"><label>★ Montée à pied</label><input type="number" id="adm-bonus-stairs" min="0" max="600" step="5"/></div>
     </div>
- 
+
     <div class="admin-section">
       <h3 class="display">Point d'arrivée</h3>
       <div class="field"><label>Lieu de RDV final</label><textarea id="adm-final-venue"></textarea></div>
     </div>
- 
+
     <div class="admin-section">
       <h3 class="display">Liens guide par équipe</h3>
       <p class="small" style="margin-bottom:8px">Un canal WhatsApp / Signal / SMS par équipe. Le bouton "Guide" ouvre celui de l'équipe connectée.</p>
@@ -1583,29 +412,29 @@ Copier
       <div class="field"><label>Mont Blanc (4807)</label><input type="url" id="adm-wa-4807" placeholder="https://chat.whatsapp.com/..."/></div>
       <div class="field"><label>Parrotspitze (4432)</label><input type="url" id="adm-wa-4432" placeholder="https://chat.whatsapp.com/..."/></div>
     </div>
- 
+
     <div class="admin-section">
       <h3 class="display">Icônes des épreuves</h3>
       <p class="small" style="margin-bottom:8px">Uploadez vos icônes personnalisées (PNG/SVG transparent, ratio carré).</p>
       <div class="icon-grid" id="adm-trial-icons"></div>
     </div>
- 
+
     <div class="admin-section">
       <h3 class="display">Icônes des bonus</h3>
       <div class="icon-grid" id="adm-bonus-icons"></div>
     </div>
- 
+
     <div class="admin-section">
       <h3 class="display">Épreuves & codes secrets</h3>
       <p class="small" style="margin-bottom:8px">Les codes sont hashés (SHA-256) avant d'être envoyés en base. Personne ne peut les voir dans le fichier HTML.</p>
       <div id="adm-trials"></div>
     </div>
- 
+
     <div class="admin-section">
       <h3 class="display">Équipes inscrites <span class="small mono" style="float:right" id="adm-team-count"></span></h3>
       <div id="adm-teams-list"></div>
     </div>
- 
+
     <div class="admin-section">
       <h3 class="display">Maintenance</h3>
       <button class="btn danger" onclick="resetAllTeams()" style="margin-bottom:10px">Réinitialiser toutes les équipes</button>
@@ -1613,14 +442,14 @@ Copier
       <button class="btn ghost" onclick="resetThisDevice()">Effacer ce device uniquement</button>
       <p class="help" style="margin-top:8px">Reset complet : à utiliser entre deux sessions du jeu. N'efface pas la config sponsor/icônes/codes.</p>
     </div>
- 
+
     <div class="btn-row">
       <button class="btn" id="btn-adm-save">Enregistrer</button>
       <button class="btn ghost" onclick="logoutAdmin()">← Quitter</button>
     </div>
   </section>
 </div>
- 
+
 <div class="modal-backdrop" id="modal">
   <div class="modal">
     <button class="modal-close" onclick="closeModal()">×</button>
@@ -1634,16 +463,16 @@ Copier
     </div>
   </div>
 </div>
- 
+
 <div class="toast" id="toast"></div>
- 
+
 <script type="module">
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
- 
+
 const SUPABASE_URL = 'https://rtxcbzqqyvxukourmphw.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_oUk1wNwicZ7x3HaKgENb2w_PiDPRnZl';
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
- 
+
 const TEAMS = {
   '4164': { name: 'Breithorn',     alt: 4164, firstTrial: 'cordee' },
   '4634': { name: 'Dufourspitze',  alt: 4634, firstTrial: 'bivouac' },
@@ -1652,11 +481,11 @@ const TEAMS = {
   '4807': { name: 'Mont Blanc',    alt: 4807, firstTrial: 'crevasse' },
   '4432': { name: 'Parrotspitze',  alt: 4432, firstTrial: 'brouillard' },
 };
- 
+
 // TRIALS is loaded from Supabase at boot — codes are not in this file
 let TRIALS = [];
 const TRIAL_ORDER = ['avalanche','brouillard','crevasse','everest','cordee','trek','bivouac','triangulation'];
- 
+
 const CHECKLIST_ITEMS = [
   { icon:'🎫', name:'Forfait Navigo (1 / personne)' },
   { icon:'🗺️', name:'Carte stylisée de Montmartre' },
@@ -1671,7 +500,7 @@ const CHECKLIST_ITEMS = [
   { icon:'⚙️', name:'Mousqueton' },
   { icon:'📡', name:'DVA / ARVA' },
 ];
- 
+
 const TRIAL_GLYPHS = {
   cordee:        `<svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2"><circle cx="20" cy="20" r="6"/><circle cx="44" cy="44" r="6"/><path d="M20 26 Q32 28 32 38 T44 38"/></svg>`,
   bivouac:       `<svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 52 L32 12 L56 52 Z"/><path d="M32 12 L32 52"/><path d="M20 35 L44 35"/></svg>`,
@@ -1687,7 +516,7 @@ const BONUS_GLYPHS = {
   insects: `<svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="32" cy="34" rx="10" ry="16"/><line x1="32" y1="18" x2="32" y2="10"/><line x1="22" y1="28" x2="14" y2="24"/><line x1="22" y1="34" x2="12" y2="34"/><line x1="22" y1="40" x2="14" y2="44"/><line x1="42" y1="28" x2="50" y2="24"/><line x1="42" y1="34" x2="52" y2="34"/><line x1="42" y1="40" x2="50" y2="44"/></svg>`,
   stairs:  `<svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 56 L16 56 L16 44 L28 44 L28 32 L40 32 L40 20 L52 20 L52 8 L60 8"/></svg>`,
 };
- 
+
 let config = {};
 let myTeam = null;
 let allTeams = [];
@@ -1697,10 +526,10 @@ let chronoInterval = null;
 let configChannel = null;
 let teamsChannel = null;
 let localChecklist = {};
- 
+
 const LS_TEAM_CODE = 'emm.teamCode.v2';
 const LS_CHECKLIST = 'emm.checklist.v2';
- 
+
 async function sha256(str) {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
@@ -1712,7 +541,7 @@ function toast(msg) {
   clearTimeout(toast._t);
   toast._t = setTimeout(() => t.classList.remove('show'), 2400);
 }
- 
+
 function go(id) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById(id).classList.add('active');
@@ -1729,7 +558,7 @@ function go(id) {
   renderChronoBars();
 }
 window.go = go;
- 
+
 async function loadConfig() {
   const { data, error } = await supabase.from('config').select('*').eq('id', 1).single();
   if (error) { console.error(error); toast('Erreur chargement config'); return; }
@@ -1752,7 +581,7 @@ function subscribeConfig() {
     })
     .subscribe();
 }
- 
+
 let trialsChannel = null;
 async function loadTrials() {
   const { data, error } = await supabase.from('trials').select('*').order('sort_order', { ascending: true });
@@ -1770,7 +599,7 @@ function subscribeTrials() {
     })
     .subscribe();
 }
- 
+
 async function loadMyTeam() {
   const code = localStorage.getItem(LS_TEAM_CODE);
   if (!code || !TEAMS[code]) return;
@@ -1824,7 +653,7 @@ function subscribeTeams() {
       if (dot) dot.classList.toggle('offline', status !== 'SUBSCRIBED');
     });
 }
- 
+
 function hydrateHome() {
   const block = document.getElementById('sponsor-block');
   const name = config.sponsor_name;
@@ -1838,7 +667,7 @@ function hydrateHome() {
     block.style.display = 'none';
   }
 }
- 
+
 const codeInputs = document.querySelectorAll('#team-code-input input');
 codeInputs.forEach((inp, i) => {
   inp.addEventListener('input', () => {
@@ -1873,7 +702,7 @@ document.getElementById('btn-team-confirm').addEventListener('click', async () =
   document.getElementById('loading').classList.add('hide');
   go('page-checklist');
 });
- 
+
 function loadLocalChecklist() {
   try { localChecklist = JSON.parse(localStorage.getItem(LS_CHECKLIST) || '{}'); } catch { localChecklist = {}; }
 }
@@ -1899,7 +728,7 @@ function hydrateChecklist() {
   document.getElementById('btn-checklist-go').disabled = n < CHECKLIST_ITEMS.length;
 }
 document.getElementById('btn-checklist-go').addEventListener('click', () => go('page-first'));
- 
+
 function trialIconHTML(trialId) {
   const customUrl = config.trial_icons?.[trialId];
   if (customUrl) return `<img src="${customUrl}" alt=""/>`;
@@ -1910,7 +739,7 @@ function bonusIconHTML(bonusId) {
   if (customUrl) return `<img src="${customUrl}" alt=""/>`;
   return BONUS_GLYPHS[bonusId] || '';
 }
- 
+
 function hydrateFirstTrial() {
   if (!myTeam) return go('page-team');
   const team = TEAMS[myTeam.team_code];
@@ -1921,7 +750,7 @@ function hydrateFirstTrial() {
   document.getElementById('first-trial-phrase').textContent = '« ' + trial.phrase + ' »';
   document.getElementById('first-glyph').innerHTML = trialIconHTML(trial.id);
 }
- 
+
 function hydrateCodes() {
   const grid = document.getElementById('trials-grid');
   grid.innerHTML = '';
@@ -1938,7 +767,7 @@ function hydrateCodes() {
   renderBonusBar();
   checkWin();
 }
- 
+
 function renderCoord() {
   const solved = myTeam?.solved || {};
   const get = id => {
@@ -1947,7 +776,7 @@ function renderCoord() {
   };
   document.getElementById('coord-display').innerHTML = `<div class="coord-line">${get('lat-deg')}<span class="coord-deg">°</span>${get('lat-min')}<span class="coord-deg">'</span>${get('lat-sec')}<span class="coord-deg">"</span>${get('lat-dir')}</div><div class="coord-line">${get('lon-deg')}<span class="coord-deg">°</span>${get('lon-min')}<span class="coord-deg">'</span>${get('lon-sec')}<span class="coord-deg">"</span>${get('lon-dir')}</div>`;
 }
- 
+
 function renderBonusBar() {
   const bar = document.getElementById('bonus-bar');
   const claimed = myTeam?.bonuses || {};
@@ -1966,7 +795,7 @@ function renderBonusBar() {
     bar.appendChild(pill);
   });
 }
- 
+
 function openTrial(trial) {
   if (myTeam?.solved?.[trial.id]) { toast('Épreuve déjà validée ✓'); return; }
   currentTrial = trial;
@@ -1986,7 +815,7 @@ window.closeModal = closeModal;
 document.getElementById('modal').addEventListener('click', e => { if (e.target.id === 'modal') closeModal(); });
 document.getElementById('modal-submit').addEventListener('click', submitCode);
 document.getElementById('modal-input').addEventListener('keydown', e => { if (e.key === 'Enter') submitCode(); });
- 
+
 async function submitCode() {
   const val = document.getElementById('modal-input').value.trim().toUpperCase();
   if (!currentTrial || !myTeam) return;
@@ -2009,7 +838,7 @@ async function submitCode() {
     toast('Code incorrect');
   }
 }
- 
+
 function checkWin() {
   const solved = myTeam?.solved || {};
   const allSolved = TRIALS.every(t => solved[t.id]);
@@ -2023,7 +852,7 @@ function checkWin() {
   reveal.innerHTML = `<p class="eyebrow" style="color:var(--navy-900)">Sommet atteint</p><h2 class="display">Rendez-vous final</h2><div class="venue-text">${venue}</div>`;
   document.getElementById('page-codes').insertBefore(reveal, document.getElementById('coord-display'));
 }
- 
+
 function hydrateBonusSelfie() {
   const frame = document.getElementById('bonus-selfie-frame');
   const url = myTeam?.selfie_url;
@@ -2046,7 +875,7 @@ document.getElementById('selfie-input').addEventListener('change', async e => {
   hydrateBonusSelfie();
   toast('Selfie enregistré · bonus actif');
 });
- 
+
 function hydrateBonusState(kind) {
   const claimed = !!myTeam?.bonuses?.[kind];
   const btn = document.getElementById(`btn-${kind}-claim`);
@@ -2067,7 +896,7 @@ async function claimBonus(kind) {
 }
 document.getElementById('btn-insects-claim').addEventListener('click', () => claimBonus('insects'));
 document.getElementById('btn-stairs-claim').addEventListener('click',  () => claimBonus('stairs'));
- 
+
 function openWhatsapp() {
   const urls = config.whatsapp_urls || {};
   const url = myTeam ? urls[myTeam.team_code] : null;
@@ -2076,7 +905,7 @@ function openWhatsapp() {
   else toast('Lien guide non configuré');
 }
 window.openWhatsapp = openWhatsapp;
- 
+
 function fmtTime(secs) {
   if (secs < 0) secs = 0;
   const h = Math.floor(secs/3600);
@@ -2120,7 +949,7 @@ function startChronoTick() {
   if (chronoInterval) clearInterval(chronoInterval);
   chronoInterval = setInterval(renderChronoBars, 1000);
 }
- 
+
 function hydrateScoreboard() {
   const wrap = document.getElementById('scoreboard');
   const enriched = allTeams.map(t => {
@@ -2146,7 +975,7 @@ function hydrateScoreboard() {
     return `<div class="score-row ${cls}"><div class="score-rank">${i+1}</div><div><div class="score-team">${t.team_name}</div><div class="score-meta">${t.team_code} m · ${bonusList || '—'}</div></div><div class="score-progress">${t._solvedCount}/8</div><div class="score-time ${t.finished_at ? 'done' : ''}">${time}</div></div>`;
   }).join('');
 }
- 
+
 document.getElementById('btn-admin-toggle').addEventListener('click', () => {
   if (adminAuthed) go('page-admin'); else go('page-admin-login');
 });
@@ -2167,7 +996,7 @@ document.getElementById('adm-login-pw').addEventListener('keydown', e => {
 });
 function logoutAdmin() { adminAuthed = false; go('page-home'); }
 window.logoutAdmin = logoutAdmin;
- 
+
 function hydrateAdmin() {
   document.getElementById('adm-sponsor-name').value = config.sponsor_name || '';
   document.getElementById('adm-chrono-minutes').value = config.chrono_minutes ?? 120;
@@ -2187,7 +1016,7 @@ function hydrateAdmin() {
   hydrateAdminTrials();
   hydrateAdminTeams();
 }
- 
+
 function hydrateAdminTrials() {
   const wrap = document.getElementById('adm-trials');
   wrap.innerHTML = TRIALS.map(t => `
@@ -2205,7 +1034,7 @@ function hydrateAdminTrials() {
     </div>
   `).join('');
 }
- 
+
 async function saveAllTrials() {
   for (const t of TRIALS) {
     const tool = document.getElementById('adm-trial-tool-' + t.id).value.trim();
@@ -2220,7 +1049,7 @@ async function saveAllTrials() {
   hydrateAdminTrials();
   return true;
 }
- 
+
 function hydrateIconUploaders() {
   const trialGrid = document.getElementById('adm-trial-icons');
   trialGrid.innerHTML = '';
@@ -2241,7 +1070,7 @@ function hydrateIconUploaders() {
     bonusGrid.appendChild(slot);
   });
 }
- 
+
 async function uploadIcon(e, field, key, slotEl) {
   const file = e.target.files[0];
   if (!file) return;
@@ -2260,7 +1089,7 @@ async function uploadIcon(e, field, key, slotEl) {
   }
   slotEl.classList.remove('uploading');
 }
- 
+
 document.getElementById('adm-sponsor-logo').addEventListener('change', async e => {
   const file = e.target.files[0];
   if (!file) return;
@@ -2274,7 +1103,7 @@ document.getElementById('adm-sponsor-logo').addEventListener('change', async e =
   config.sponsor_logo = data.publicUrl;
   toast('Logo prêt — pensez à enregistrer');
 });
- 
+
 document.getElementById('btn-adm-save').addEventListener('click', async () => {
   const whatsapp_urls = {};
   ['4164','4634','4061','4478','4807','4432'].forEach(code => {
@@ -2295,7 +1124,7 @@ document.getElementById('btn-adm-save').addEventListener('click', async () => {
   const ok2 = await saveAllTrials();
   if (ok && ok2) toast('Configuration enregistrée');
 });
- 
+
 function hydrateAdminTeams() {
   document.getElementById('adm-team-count').textContent = allTeams.length + ' actives';
   const wrap = document.getElementById('adm-teams-list');
@@ -2307,7 +1136,7 @@ function hydrateAdminTeams() {
     return `<div class="score-row"><div class="score-rank">${t.team_code}</div><div><div class="score-team">${t.team_name}</div><div class="score-meta">Démarré ${new Date(t.started_at).toLocaleTimeString('fr-FR')}</div></div><div class="score-progress">${solved}/8</div><div class="score-time ${t.finished_at ? 'done' : ''}">${time}</div></div>`;
   }).join('');
 }
- 
+
 async function resetAllTeams() {
   if (!confirm('Réinitialiser TOUTES les équipes ? Toutes les progressions seront effacées.')) return;
   const { error, count } = await supabase.from('teams').delete({ count: 'exact' }).neq('team_code', '');
@@ -2321,7 +1150,7 @@ async function resetAllTeams() {
   toast('Reset OK · ' + (count ?? '?') + ' équipes supprimées');
 }
 window.resetAllTeams = resetAllTeams;
- 
+
 async function fullReset() {
   if (!confirm('RESET COMPLET\n\nVa supprimer :\n• toutes les équipes en base\n• le code équipe et la checklist de CE téléphone\n\nLa config sponsor / icônes / codes n\'est PAS touchée.\n\nContinuer ?')) return;
   const { error, count } = await supabase.from('teams').delete({ count: 'exact' }).neq('team_code', '');
@@ -2336,7 +1165,7 @@ async function fullReset() {
   toast('Reset complet · ' + (count ?? '?') + ' équipes supprimées');
 }
 window.fullReset = fullReset;
- 
+
 function resetThisDevice() {
   if (!confirm('Effacer le code équipe et la checklist de CE téléphone uniquement ?\n\nLes autres équipes en base ne sont pas touchées.')) return;
   localStorage.removeItem(LS_TEAM_CODE);
@@ -2347,7 +1176,7 @@ function resetThisDevice() {
   go('page-home');
 }
 window.resetThisDevice = resetThisDevice;
- 
+
 const manifest = {
   name: 'Expédition Mont Martre',
   short_name: 'Mont Martre',
@@ -2359,7 +1188,7 @@ const manifest = {
   icons: [{ src: 'data:image/svg+xml;base64,' + btoa(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect width="192" height="192" fill="#06132a"/><path d="M30 140 L70 70 L92 110 L120 50 L150 120 L162 140 Z" fill="#c89b3c"/></svg>`), sizes: '192x192', type: 'image/svg+xml' }]
 };
 document.getElementById('manifest-link').href = URL.createObjectURL(new Blob([JSON.stringify(manifest)], { type: 'application/json' }));
- 
+
 loadLocalChecklist();
 await loadConfig();
 await loadTrials();
@@ -2370,18 +1199,13 @@ subscribeTrials();
 subscribeTeams();
 startChronoTick();
 document.getElementById('loading').classList.add('hide');
- 
+
 if (myTeam) {
   go('page-codes');
 } else {
   hydrateHome();
 }
 </script>
- 
+
 </body>
 </html>
- 
-
-
-
-
