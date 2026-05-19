@@ -241,9 +241,6 @@
       <input type="tel" inputmode="numeric" maxlength="1"/>
     </div>
     <p class="team-hint" id="team-hint"></p>
-    <div class="summit-list">
-      4164 BREITHORN · 4634 DUFOURSPITZE · 4061 GRAN PARADISO<br/>4478 MATTERHORN · 4807 MONT BLANC · 4432 PARROTSPITZE
-    </div>
     <div class="btn-row">
       <button class="btn" id="btn-team-confirm" disabled>Lancer le chrono</button>
       <button class="btn ghost" onclick="go('page-brief')">← Retour</button>
@@ -1139,13 +1136,15 @@ function hydrateAdminTeams() {
 
 async function resetAllTeams() {
   if (!confirm('Réinitialiser TOUTES les équipes ? Toutes les progressions seront effacées.')) return;
-  const { error } = await supabase.from('teams').delete().neq('team_code', '');
-  if (error) { console.error(error); toast('Erreur reset'); return; }
+  const { error, count } = await supabase.from('teams').delete({ count: 'exact' }).neq('team_code', '');
+  if (error) { console.error(error); toast('Erreur reset: ' + (error.message || JSON.stringify(error))); return; }
   localStorage.removeItem(LS_TEAM_CODE);
+  localStorage.removeItem(LS_CHECKLIST);
+  localChecklist = {};
   myTeam = null;
   await loadAllTeams();
   hydrateAdminTeams();
-  toast('Toutes les équipes réinitialisées');
+  toast('Reset OK · ' + (count ?? '?') + ' équipes supprimées');
 }
 window.resetAllTeams = resetAllTeams;
 
