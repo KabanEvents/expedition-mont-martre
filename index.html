@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -429,6 +428,12 @@
     </div>
 
     <div class="admin-section">
+      <h3 class="display">Épreuves & codes secrets</h3>
+      <p class="small" style="margin-bottom:8px">Les codes sont hashés (SHA-256) avant d'être envoyés en base. Personne ne peut les voir dans le fichier HTML.</p>
+      <div id="adm-trials"></div>
+    </div>
+
+    <div class="admin-section">
       <h3 class="display">Équipes inscrites <span class="small mono" style="float:right" id="adm-team-count"></span></h3>
       <div id="adm-teams-list"></div>
     </div>
@@ -477,16 +482,9 @@ const TEAMS = {
   '4432': { name: 'Parrotspitze',  alt: 4432, firstTrial: 'brouillard' },
 };
 
-const TRIALS = [
-  { id: 'avalanche',     name: 'Avalanche',     tool: 'DVA / ARVA',         phrase: 'Une avalanche vient de se produire ! Retrouver la balise.', code: '48',  slot: 'lat-deg' },
-  { id: 'brouillard',    name: 'Brouillard',    tool: 'Lunettes',           phrase: "À la sortie du brouillard, il faut se protéger du soleil soleil pour bien lire les paroles paroles.", code: '53',  slot: 'lat-min' },
-  { id: 'crevasse',      name: 'Crevasse',      tool: 'Bâton',              phrase: 'Tendre une perche à Marcel, enseveli sous 115 cm de neige.', code: '25',  slot: 'lat-sec' },
-  { id: 'everest',       name: 'Everest',       tool: 'Drapeaux',           phrase: "Prier l'ordre tibétain.", code: 'NORD', slot: 'lat-dir' },
-  { id: 'cordee',        name: 'Cordée',        tool: 'Corde · mousqueton', phrase: 'Lier son destin à celui de son compagnon de cordée.', code: '2',   slot: 'lon-deg' },
-  { id: 'trek',          name: 'Trek',          tool: 'Boussole',           phrase: 'Direction 310° NW, faire 36 pas puis suivre le balisage GR jusque sous la croix de Savoie.', code: '18',  slot: 'lon-min' },
-  { id: 'bivouac',       name: 'Bivouac',       tool: 'Bouteille',          phrase: "C'est pas une boisson pour mauviettes. Santé puis… bonne chance surtout.", code: '20',  slot: 'lon-sec' },
-  { id: 'triangulation', name: 'Triangulation', tool: 'Carte',              phrase: 'Se placer au bon endroit du glacier pour admirer la vue sur le Sacré-Cœur.', code: 'EST',  slot: 'lon-dir' },
-];
+// TRIALS is loaded from Supabase at boot — codes are not in this file
+let TRIALS = [];
+const TRIAL_ORDER = ['avalanche','brouillard','crevasse','everest','cordee','trek','bivouac','triangulation'];
 
 const CHECKLIST_ITEMS = [
   { icon:'🎫', name:'Forfait Navigo (1 / personne)' },
@@ -580,6 +578,24 @@ function subscribeConfig() {
       hydrateHome();
       if (document.getElementById('page-codes').classList.contains('active')) hydrateCodes();
       if (document.getElementById('page-admin').classList.contains('active')) hydrateAdmin();
+    })
+    .subscribe();
+}
+
+let trialsChannel = null;
+async function loadTrials() {
+  const { data, error } = await supabase.from('trials').select('*').order('sort_order', { ascending: true });
+  if (error) { console.error(error); toast('Erreur chargement épreuves'); return; }
+  TRIALS = (data || []).map(t => ({ id: t.id, name: t.name, tool: t.tool, phrase: t.phrase, slot: t.slot, code_hash: t.code_hash }));
+}
+function subscribeTrials() {
+  if (trialsChannel) supabase.removeChannel(trialsChannel);
+  trialsChannel = supabase.channel('trials-changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'trials' }, async () => {
+      await loadTrials();
+      if (document.getElementById('page-codes').classList.contains('active')) hydrateCodes();
+      if (document.getElementById('page-first').classList.contains('active')) hydrateFirstTrial();
+      if (document.getElementById('page-admin').classList.contains('active')) hydrateAdminTrials();
     })
     .subscribe();
 }
@@ -743,7 +759,7 @@ function hydrateCodes() {
     const isSolved = !!solved[trial.id];
     const cell = document.createElement('div');
     cell.className = 'trial-cell' + (isSolved ? ' solved' : '');
-    cell.innerHTML = `<div class="icon-wrap"><div class="ic">${trialIconHTML(trial.id)}</div><div class="trial-name">${trial.name}</div></div><div class="trial-value">${isSolved ? trial.code : '— —'}</div><div class="trial-meta">${trial.tool}</div>`;
+    cell.innerHTML = `<div class="icon-wrap"><div class="ic">${trialIconHTML(trial.id)}</div><div class="trial-name">${trial.name}</div></div><div class="trial-value">${isSolved ? solved[trial.id] : '— —'}</div><div class="trial-meta">${trial.tool}</div>`;
     cell.addEventListener('click', () => openTrial(trial));
     grid.appendChild(cell);
   });
@@ -756,7 +772,7 @@ function renderCoord() {
   const solved = myTeam?.solved || {};
   const get = id => {
     const t = TRIALS.find(x => x.slot === id);
-    return solved[t.id] ? `<span class="coord-slot filled">${t.code}</span>` : `<span class="coord-slot">__</span>`;
+    return solved[t.id] ? `<span class="coord-slot filled">${solved[t.id]}</span>` : `<span class="coord-slot">__</span>`;
   };
   document.getElementById('coord-display').innerHTML = `<div class="coord-line">${get('lat-deg')}<span class="coord-deg">°</span>${get('lat-min')}<span class="coord-deg">'</span>${get('lat-sec')}<span class="coord-deg">"</span>${get('lat-dir')}</div><div class="coord-line">${get('lon-deg')}<span class="coord-deg">°</span>${get('lon-min')}<span class="coord-deg">'</span>${get('lon-sec')}<span class="coord-deg">"</span>${get('lon-dir')}</div>`;
 }
@@ -803,9 +819,10 @@ document.getElementById('modal-input').addEventListener('keydown', e => { if (e.
 async function submitCode() {
   const val = document.getElementById('modal-input').value.trim().toUpperCase();
   if (!currentTrial || !myTeam) return;
-  if (val === currentTrial.code.toUpperCase()) {
+  const inputHash = await sha256(val);
+  if (inputHash === currentTrial.code_hash) {
     const solved = { ...(myTeam.solved || {}) };
-    solved[currentTrial.id] = new Date().toISOString();
+    solved[currentTrial.id] = val;  // store the validated input — used to render the GPS slot
     await patchMyTeam({ solved });
     const allSolved = TRIALS.every(t => solved[t.id]);
     if (allSolved && !myTeam.finished_at) {
@@ -996,7 +1013,41 @@ function hydrateAdmin() {
   if (config.sponsor_logo) { sp.src = config.sponsor_logo; sp.style.display = 'block'; }
   else sp.style.display = 'none';
   hydrateIconUploaders();
+  hydrateAdminTrials();
   hydrateAdminTeams();
+}
+
+function hydrateAdminTrials() {
+  const wrap = document.getElementById('adm-trials');
+  wrap.innerHTML = TRIALS.map(t => `
+    <div class="field" style="border:1px solid rgba(255,255,255,.08);border-radius:4px;padding:12px;margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
+        <span style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:.05em;color:var(--gold)">${t.name}</span>
+        <span class="small mono">${t.slot}</span>
+      </div>
+      <label style="margin-top:8px">Outil</label>
+      <input type="text" id="adm-trial-tool-${t.id}" value="${t.tool.replace(/"/g,'&quot;')}"/>
+      <label style="margin-top:8px">Phrase / énigme</label>
+      <textarea id="adm-trial-phrase-${t.id}">${t.phrase}</textarea>
+      <label style="margin-top:8px">Nouveau code (laisser vide pour ne pas changer)</label>
+      <input type="text" id="adm-trial-code-${t.id}" placeholder="Ex: 48, NORD, EST…" autocomplete="off"/>
+    </div>
+  `).join('');
+}
+
+async function saveAllTrials() {
+  for (const t of TRIALS) {
+    const tool = document.getElementById('adm-trial-tool-' + t.id).value.trim();
+    const phrase = document.getElementById('adm-trial-phrase-' + t.id).value.trim();
+    const newCode = document.getElementById('adm-trial-code-' + t.id).value.trim().toUpperCase();
+    const patch = { tool, phrase };
+    if (newCode) patch.code_hash = await sha256(newCode);
+    const { error } = await supabase.from('trials').update(patch).eq('id', t.id);
+    if (error) { console.error(error); toast('Erreur ' + t.name + ': ' + error.message); return false; }
+  }
+  await loadTrials();
+  hydrateAdminTrials();
+  return true;
 }
 
 function hydrateIconUploaders() {
@@ -1070,7 +1121,8 @@ document.getElementById('btn-adm-save').addEventListener('click', async () => {
     whatsapp_urls,
   };
   const ok = await saveConfigToDb(patch);
-  if (ok) toast('Configuration enregistrée');
+  const ok2 = await saveAllTrials();
+  if (ok && ok2) toast('Configuration enregistrée');
 });
 
 function hydrateAdminTeams() {
@@ -1111,9 +1163,11 @@ document.getElementById('manifest-link').href = URL.createObjectURL(new Blob([JS
 
 loadLocalChecklist();
 await loadConfig();
+await loadTrials();
 await loadMyTeam();
 await loadAllTeams();
 subscribeConfig();
+subscribeTrials();
 subscribeTeams();
 startChronoTick();
 document.getElementById('loading').classList.add('hide');
