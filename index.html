@@ -32,7 +32,7 @@
   html,body{margin:0;padding:0;height:100%;overscroll-behavior:none}
   body{font-family:'Cormorant Garamond',Georgia,serif;background:var(--navy-900);color:var(--ice-50);font-size:18px;line-height:1.45;-webkit-font-smoothing:antialiased;background-image:radial-gradient(ellipse at top,rgba(29,61,104,.55),transparent 60%),radial-gradient(ellipse at bottom,rgba(11,29,53,.9),var(--navy-900) 70%),var(--topo);background-attachment:fixed;min-height:100dvh}
   #app{max-width:480px;margin:0 auto;min-height:100dvh;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);position:relative}
-  .page{display:none;padding:18px 20px 28px;min-height:100dvh;animation:fadeUp .5s cubic-bezier(.2,.7,.3,1) both}
+  .page{display:none;padding:18px 20px max(28px,env(safe-area-inset-bottom));min-height:100dvh;animation:fadeUp .5s cubic-bezier(.2,.7,.3,1) both}
   .page.active{display:flex;flex-direction:column}
   @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
 
@@ -54,7 +54,7 @@
   .btn.ghost{background:transparent;border:1px solid var(--ice-300);color:var(--ice-100);box-shadow:none}
   .btn.ghost:active{background:rgba(255,255,255,.05)}
   .btn.danger{background:linear-gradient(180deg,#c44b3a,var(--crimson));color:#fff}
-  .btn-row{display:grid;gap:8px;margin-top:auto;padding-top:14px}
+  .btn-row{display:grid;gap:8px;margin-top:16px;padding-top:0}
 
   #page-home{justify-content:space-between;align-items:stretch}
   #page-home .hero{display:flex;flex-direction:column;align-items:center;padding-top:5vh}
@@ -128,10 +128,10 @@
   .bonus-pill .blabel{font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:.05em}
   .bonus-pill .bval{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--gold);margin-top:2px}
 
-  .modal-backdrop{position:fixed;inset:0;background:rgba(6,19,42,.85);backdrop-filter:blur(8px);display:none;align-items:flex-end;justify-content:center;z-index:50;padding:16px}
+  .modal-backdrop{position:fixed;inset:0;background:rgba(6,19,42,.85);backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center;z-index:50;padding:16px;padding-top:max(16px,env(safe-area-inset-top))}
   .modal-backdrop.active{display:flex;animation:fadeIn .25s}
   @keyframes fadeIn{from{opacity:0}to{opacity:1}}
-  .modal{background:var(--navy-800);border:1px solid rgba(255,255,255,.1);border-radius:8px 8px 0 0;width:100%;max-width:460px;padding:24px;max-height:90vh;overflow-y:auto;animation:slideUp .35s cubic-bezier(.2,.7,.3,1)}
+  .modal{background:var(--navy-800);border:1px solid rgba(255,255,255,.1);border-radius:8px;width:100%;max-width:460px;padding:20px;max-height:80vh;overflow-y:auto;animation:slideUp .35s cubic-bezier(.2,.7,.3,1)}
   @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
   .modal-close{background:none;border:0;color:var(--ice-300);float:right;font-size:22px;cursor:pointer;padding:0 4px}
   .modal .phrase{font-style:italic;color:var(--ice-100);border-left:2px solid var(--gold);padding-left:14px;margin:14px 0;font-size:16px}
@@ -843,7 +843,11 @@ function openTrial(trial) {
   const inp = document.getElementById('modal-input');
   inp.value = ''; inp.classList.remove('error');
   document.getElementById('modal').classList.add('active');
-  setTimeout(() => inp.focus(), 250);
+  setTimeout(() => {
+    const inp = document.getElementById('modal-input');
+    inp.focus();
+    inp.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, 250);
 }
 function closeModal() {
   document.getElementById('modal').classList.remove('active');
