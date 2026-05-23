@@ -1,5 +1,6 @@
 
 
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -200,43 +201,6 @@
   .install-modal .im-step{display:flex;align-items:center;gap:12px;text-align:left;padding:10px 0;border-bottom:1px dashed rgba(45,79,110,.15);font-size:15px}
   .install-modal .im-step:last-child{border-bottom:0}
   .install-modal .im-step .num{width:26px;height:26px;border-radius:50%;background:var(--gold);color:var(--navy-900);display:grid;place-items:center;font-family:'Bebas Neue',sans-serif;flex-shrink:0}
-
-  /* ===== CELEBRATION BURST ===== */
-  .celebrate-overlay{position:fixed;inset:0;pointer-events:none;z-index:150;overflow:hidden}
-  .confetti-piece{position:absolute;top:-10px;border-radius:2px;opacity:0;animation:confettiFall linear forwards}
-  @keyframes confettiFall{0%{opacity:1;transform:translateY(0) rotate(0deg) scaleX(1)}80%{opacity:1}100%{opacity:0;transform:translateY(110vh) rotate(720deg) scaleX(-1)}}
-  .solve-flash{position:fixed;inset:0;background:rgba(45,79,110,.18);pointer-events:none;z-index:140;opacity:0;animation:solveFlash .6s ease-out forwards}
-  @keyframes solveFlash{0%{opacity:1}100%{opacity:0}}
-
-  /* ===== VICTORY SCREEN ===== */
-  #page-victory{background:linear-gradient(160deg,#0f1e36 0%,#1a3020 60%,#0b1d35 100%);color:#f8f3ea;justify-content:space-between;align-items:center;text-align:center;position:relative;overflow:hidden}
-  #page-victory .v-stars{position:absolute;inset:0;pointer-events:none}
-  #page-victory .v-star{position:absolute;border-radius:50%;background:#fff;animation:twinkle linear infinite}
-  @keyframes twinkle{0%,100%{opacity:.2;transform:scale(1)}50%{opacity:1;transform:scale(1.4)}}
-  .v-hero{display:flex;flex-direction:column;align-items:center;gap:8px;padding-top:4vh;position:relative;z-index:2}
-  .v-eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:#c8d8e8;margin:0}
-  .v-title{font-family:'Bebas Neue',sans-serif;font-size:clamp(52px,16vw,74px);line-height:.9;letter-spacing:.04em;text-transform:uppercase;color:#f8f3ea;margin:0;text-shadow:0 2px 40px rgba(200,210,255,.25)}
-  .v-title span{color:#e8c373}
-  .v-subtitle{font-size:17px;color:#c8d8e8;margin:8px 0 0;line-height:1.4}
-  .v-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:100%;max-width:380px;position:relative;z-index:2;margin:0 auto}
-  .v-stat{padding:14px 8px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:6px;backdrop-filter:blur(8px);animation:v-badge-pop .6s cubic-bezier(.2,.8,.3,1) both}
-  .v-stat:nth-child(1){animation-delay:.1s}.v-stat:nth-child(2){animation-delay:.2s}.v-stat:nth-child(3){animation-delay:.3s}
-  @keyframes v-badge-pop{0%{opacity:0;transform:scale(.5) translateY(20px)}60%{transform:scale(1.1)}100%{opacity:1;transform:scale(1) translateY(0)}}
-  .v-stat .vn{font-family:'Bebas Neue',sans-serif;font-size:36px;color:#e8c373;line-height:1}
-  .v-stat .vl{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:rgba(200,220,255,.6);margin-top:3px}
-  .v-coord{font-family:'JetBrains Mono',monospace;font-size:15px;letter-spacing:.1em;color:#e8c373;background:rgba(232,195,115,.08);border:1px solid rgba(232,195,115,.25);border-radius:4px;padding:14px 18px;line-height:2;position:relative;z-index:2;width:100%;max-width:380px;margin:0 auto}
-  .v-coord-label{font-size:10px;letter-spacing:.25em;text-transform:uppercase;color:rgba(200,220,255,.5);margin-bottom:6px}
-  .v-bonuses{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;position:relative;z-index:2}
-  .v-bonus-badge{padding:6px 14px;background:rgba(232,195,115,.15);border:1px solid rgba(232,195,115,.4);border-radius:20px;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.1em;color:#e8c373}
-  .v-btn-row{display:grid;gap:8px;width:100%;max-width:380px;margin:0 auto;padding-bottom:4vh;position:relative;z-index:2}
-  .v-btn{appearance:none;border:0;cursor:pointer;font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:.12em;text-transform:uppercase;padding:15px 22px;border-radius:3px;width:100%}
-  .v-btn.primary{background:linear-gradient(180deg,#e8c373,#c89b3c);color:#0b1d35;box-shadow:0 0 24px rgba(232,195,115,.3)}
-  .v-btn.ghost{background:transparent;border:1.5px solid rgba(255,255,255,.2);color:#f8f3ea}
-  .v-rank-badge{display:inline-flex;align-items:center;gap:8px;padding:8px 16px;background:rgba(232,195,115,.12);border:1px solid rgba(232,195,115,.3);border-radius:24px;font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.15em;color:#e8c373;position:relative;z-index:2}
-  .v-rank-badge .medal{font-size:20px}
-  #page-victory .v-confetti-anchor{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:1}
-  @keyframes victoryConfettiFall{0%{opacity:1;transform:translateY(0) rotate(0deg)}100%{opacity:0;transform:translateY(105vh) rotate(900deg)}}
-  .v-piece{position:absolute;top:-20px;border-radius:2px;animation:victoryConfettiFall linear forwards}
 </style>
 </head>
 <body>
@@ -520,40 +484,7 @@
       <button class="btn ghost" onclick="logoutAdmin()">← Quitter</button>
     </div>
   </section>
-
-  <!-- ===== VICTORY SCREEN ===== -->
-  <section class="page" id="page-victory">
-    <div class="v-stars" id="v-stars"></div>
-    <div class="v-confetti-anchor" id="v-confetti-anchor"></div>
-    <div class="v-hero">
-      <p class="v-eyebrow">🏔 Sommet atteint</p>
-      <h1 class="v-title">Som&shy;met<br/><span id="v-team-name">Mont Blanc</span></h1>
-      <p class="v-subtitle" id="v-subtitle">Cordée victorieuse</p>
-    </div>
-    <div class="v-rank-badge" id="v-rank-badge">
-      <span class="medal" id="v-medal">🥇</span>
-      <span id="v-rank-text">1ère équipe arrivée</span>
-    </div>
-    <div class="v-stats" id="v-stats">
-      <div class="v-stat"><div class="vn" id="vs-time">--:--</div><div class="vl">Temps<br/>effectif</div></div>
-      <div class="v-stat"><div class="vn" id="vs-trials">8/8</div><div class="vl">Épreuves<br/>validées</div></div>
-      <div class="v-stat"><div class="vn" id="vs-bonus">0</div><div class="vl">Bonus<br/>récoltés</div></div>
-    </div>
-    <div class="v-coord" id="v-coord">
-      <div class="v-coord-label">Coordonnées du sommet secret</div>
-      <div id="v-coord-lines">-- ° -- ' -- " N<br/>-- ° -- ' -- " E</div>
-    </div>
-    <div class="v-bonuses" id="v-bonuses"></div>
-    <div class="v-btn-row">
-      <button class="v-btn primary" onclick="go('page-scoreboard')">🏆 Voir le classement</button>
-      <button class="v-btn ghost" onclick="go('page-codes')">← Retour aux épreuves</button>
-    </div>
-  </section>
-
 </div>
-
-<!-- Celebration overlay -->
-<div class="celebrate-overlay" id="celebrate-overlay"></div>
 
 <div class="install-modal" id="install-modal">
   <div class="im-card">
@@ -947,20 +878,15 @@ async function submitCode() {
   const inputHash = await sha256(val);
   if (inputHash === currentTrial.code_hash) {
     const solved = { ...(myTeam.solved || {}) };
-    solved[currentTrial.id] = val; // store the validated input — used to render the GPS slot
+    solved[currentTrial.id] = val;  // store the validated input — used to render the GPS slot
     await patchMyTeam({ solved });
     const allSolved = TRIALS.every(t => solved[t.id]);
     if (allSolved && !myTeam.finished_at) {
       await patchMyTeam({ finished_at: new Date().toISOString() });
     }
     closeModal();
-    playCelebration(allSolved);
-    if (allSolved) {
-      setTimeout(() => { hydrateVictory(); go('page-victory'); launchVictoryConfetti(); }, 900);
-    } else {
-      toast('✓ ' + currentTrial.name + ' validée');
-      hydrateCodes();
-    }
+    toast('✓ ' + currentTrial.name + ' validée');
+    hydrateCodes();
   } else {
     const inp = document.getElementById('modal-input');
     inp.classList.add('error');
@@ -968,101 +894,6 @@ async function submitCode() {
     toast('Code incorrect');
   }
 }
-
-/* ===== CELEBRATION BURST ===== */
-function playCelebration(isFinal) {
-  const flash = document.createElement('div');
-  flash.className = 'solve-flash';
-  document.body.appendChild(flash);
-  setTimeout(() => flash.remove(), 700);
-  try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const notes = isFinal ? [523, 659, 784, 1047] : [523, 659];
-    notes.forEach((freq, i) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain); gain.connect(ctx.destination);
-      osc.type = 'sine';
-      osc.frequency.value = freq;
-      gain.gain.setValueAtTime(0, ctx.currentTime + i * 0.12);
-      gain.gain.linearRampToValueAtTime(0.18, ctx.currentTime + i * 0.12 + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.12 + 0.28);
-      osc.start(ctx.currentTime + i * 0.12);
-      osc.stop(ctx.currentTime + i * 0.12 + 0.3);
-    });
-    setTimeout(() => ctx.close(), 2000);
-  } catch(e) {}
-  const overlay = document.getElementById('celebrate-overlay');
-  const colors = ['#e8c373','#3d6580','#3e6825','#c44b3a','#f8f3ea','#2d4f6e'];
-  const count = isFinal ? 80 : 36;
-  for (let i = 0; i < count; i++) {
-    const el = document.createElement('div');
-    el.className = 'confetti-piece';
-    el.style.cssText = `left:${Math.random()*100}%;background:${colors[Math.floor(Math.random()*colors.length)]};width:${6+Math.random()*8}px;height:${10+Math.random()*10}px;animation-duration:${1.2+Math.random()*1.4}s;animation-delay:${Math.random()*0.4}s;border-radius:${Math.random()>0.5?'50%':'2px'};`;
-    overlay.appendChild(el);
-    el.addEventListener('animationend', () => el.remove());
-  }
-}
-
-/* ===== VICTORY SCREEN ===== */
-function hydrateVictory() {
-  if (!myTeam) return;
-  const team = TEAMS[myTeam.team_code];
-  const solved = myTeam.solved || {};
-  const bonuses = myTeam.bonuses || {};
-  const starsEl = document.getElementById('v-stars');
-  if (!starsEl.children.length) {
-    for (let i = 0; i < 60; i++) {
-      const s = document.createElement('div');
-      s.className = 'v-star';
-      const sz = 1 + Math.random() * 2.5;
-      s.style.cssText = `left:${Math.random()*100}%;top:${Math.random()*100}%;width:${sz}px;height:${sz}px;animation-duration:${2+Math.random()*3}s;animation-delay:${Math.random()*3}s`;
-      starsEl.appendChild(s);
-    }
-  }
-  document.getElementById('v-team-name').textContent = team.name;
-  document.getElementById('v-subtitle').textContent = team.alt + ' m · Cordée victorieuse';
-  const c = computeChrono(myTeam, config);
-  document.getElementById('vs-time').textContent = fmtTime(c.effectiveElapsed);
-  document.getElementById('vs-trials').textContent = Object.keys(solved).length + '/8';
-  document.getElementById('vs-bonus').textContent = Object.values(bonuses).filter(Boolean).length;
-  const finished = allTeams.filter(t => t.finished_at).sort((a,b) =>
-    computeChrono(a, config).effectiveElapsed - computeChrono(b, config).effectiveElapsed
-  );
-  const rank = finished.findIndex(t => t.team_code === myTeam.team_code) + 1;
-  const medals = ['🥇','🥈','🥉'];
-  document.getElementById('v-medal').textContent = medals[rank-1] || '🏅';
-  document.getElementById('v-rank-text').textContent = rank === 1 ? '1ère équipe arrivée !' : rank + 'e équipe arrivée';
-  const get = id => { const t = TRIALS.find(x => x.slot === id); return t && solved[t.id] ? solved[t.id] : '--'; };
-  document.getElementById('v-coord-lines').innerHTML =
-    get('lat-deg') + '° ' + get('lat-min') + "' " + get('lat-sec') + '" ' + get('lat-dir') + '<br/>' +
-    get('lon-deg') + '° ' + get('lon-min') + "' " + get('lon-sec') + '" ' + get('lon-dir');
-  const badgeEl = document.getElementById('v-bonuses');
-  badgeEl.innerHTML = '';
-  const bonusLabels = { selfie: '📷 Selfie', insects: '🦗 Insectes', stairs: '🪜 Marches' };
-  Object.entries(bonuses).forEach(([k, v]) => {
-    if (!v) return;
-    const b = document.createElement('span');
-    b.className = 'v-bonus-badge';
-    b.textContent = bonusLabels[k] || k;
-    badgeEl.appendChild(b);
-  });
-}
-
-function launchVictoryConfetti() {
-  const anchor = document.getElementById('v-confetti-anchor');
-  const colors = ['#e8c373','#c89b3c','#3d6580','#3e6825','#f8f3ea','#c44b3a','#fff'];
-  for (let i = 0; i < 120; i++) {
-    const el = document.createElement('div');
-    el.className = 'v-piece';
-    const sz = 7 + Math.random() * 9;
-    el.style.cssText = `left:${Math.random()*100}%;background:${colors[Math.floor(Math.random()*colors.length)]};width:${sz}px;height:${sz+Math.random()*8}px;animation-duration:${2.5+Math.random()*2}s;animation-delay:${Math.random()*0.8}s;border-radius:${Math.random()>0.5?'50%':'2px'};`;
-    anchor.appendChild(el);
-    el.addEventListener('animationend', () => el.remove());
-  }
-}
-window.hydrateVictory = hydrateVictory;
-window.launchVictoryConfetti = launchVictoryConfetti;
 
 function checkWin() {
   const solved = myTeam?.solved || {};
@@ -1074,7 +905,7 @@ function checkWin() {
   reveal.id = 'win-reveal';
   reveal.className = 'reveal-venue';
   const venue = config.final_venue || 'Rendez-vous au sommet — paramétrez le lieu dans l’admin.';
-  reveal.innerHTML = '<p class="eyebrow" style="color:var(--navy-900)">Sommet atteint 🏔</p><h2 class="display">Rendez-vous final</h2><div class="venue-text">' + venue + '</div><button onclick="hydrateVictory();go('page-victory');launchVictoryConfetti();" style="margin-top:12px;appearance:none;border:1px solid var(--gold);background:rgba(45,79,110,.12);color:var(--gold);font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:.1em;padding:10px 20px;border-radius:3px;cursor:pointer">🏆 Voir l’écran de victoire</button>';
+  reveal.innerHTML = `<p class="eyebrow" style="color:var(--navy-900)">Sommet atteint</p><h2 class="display">Rendez-vous final</h2><div class="venue-text">${venue}</div>`;
   document.getElementById('page-codes').insertBefore(reveal, document.getElementById('coord-display'));
 }
 
