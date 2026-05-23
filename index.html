@@ -1,5 +1,4 @@
 
-
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -1032,7 +1031,7 @@ function hydrateVictory() {
   const rank = finished.findIndex(t => t.team_code === myTeam.team_code) + 1;
   const medals = ['🥇','🥈','🥉'];
   document.getElementById('v-medal').textContent = medals[rank-1] || '🏅';
-  document.getElementById('v-rank-text').textContent = rank === 1 ? '1ère équipe arrivée !' : rank + 'e équipe arrivée';
+  document.getElementById('v-rank-text').textContent = rank === 1 ? '1ère équipe arrivée !' : rank + 'e équipe arrivée';
   const get = id => { const t = TRIALS.find(x => x.slot === id); return t && solved[t.id] ? solved[t.id] : '--'; };
   document.getElementById('v-coord-lines').innerHTML =
     get('lat-deg') + '° ' + get('lat-min') + "' " + get('lat-sec') + '" ' + get('lat-dir') + '<br/>' +
