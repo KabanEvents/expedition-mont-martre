@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -17,7 +16,9 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<!-- PERF: on ne charge plus que les graisses réellement utilisées dans le CSS
+     (Inter 500 et JetBrains Mono 500/700 n'étaient jamais appelés) -->
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600&family=JetBrains+Mono&display=swap" rel="stylesheet">
 
 <style>
   :root {
@@ -30,7 +31,10 @@
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{margin:0;padding:0;height:100%;overscroll-behavior:none}
-  body{font-family:'Inter','Helvetica Neue',sans-serif;background:var(--navy-900);color:var(--ice-50);font-size:17px;line-height:1.55;-webkit-font-smoothing:antialiased;background-image:radial-gradient(ellipse at 30% 15%,rgba(45,79,110,.08),transparent 55%),radial-gradient(ellipse at 70% 85%,rgba(62,104,37,.07),transparent 50%),var(--topo),url("hero-bg.jpg");background-attachment:fixed;background-size:cover;min-height:100dvh}
+  /* PERF: background-attachment:fixed est coûteux sur mobile (repaint constant au scroll,
+     et se comporte mal sur iOS Safari). L'app est en max-width:480px, donc "scroll" suffit
+     et évite tout le travail de recomposition GPU en continu. */
+  body{font-family:'Inter','Helvetica Neue',sans-serif;background:var(--navy-900);color:var(--ice-50);font-size:17px;line-height:1.55;-webkit-font-smoothing:antialiased;background-image:radial-gradient(ellipse at 30% 15%,rgba(45,79,110,.08),transparent 55%),radial-gradient(ellipse at 70% 85%,rgba(62,104,37,.07),transparent 50%),var(--topo),url("hero-bg.jpg");background-attachment:scroll;background-size:cover;min-height:100dvh}
   #app{max-width:480px;margin:0 auto;min-height:100dvh;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);position:relative}
   .page{display:none;padding:18px 20px max(28px,env(safe-area-inset-bottom));min-height:100dvh;animation:fadeUp .5s cubic-bezier(.2,.7,.3,1) both}
   .page.active{display:flex;flex-direction:column}
@@ -674,7 +678,14 @@ function go(id) {
 window.go = go;
 
 async function loadConfig() {
-  const { data, error } = await supabase.from('config').select('*').eq('id', 1).single();
+  // SECURITY: on ne sélectionne plus '*' — le hash du mot de passe admin n'est plus jamais
+  // envoyé au navigateur d'un joueur. Il vit désormais uniquement dans la table admin_secrets,
+  // jamais lue par ce client (voir vérification via RPC plus bas).
+  const { data, error } = await supabase
+    .from('config')
+    .select('id, sponsor_name, sponsor_logo, chrono_minutes, bonus_selfie, bonus_insects, bonus_stairs, final_venue, whatsapp_url, whatsapp_urls, trial_icons, bonus_icons, checklist_icons')
+    .eq('id', 1)
+    .single();
   if (error) { console.error(error); toast('Erreur chargement config'); return; }
   config = data || {};
   hydrateHome();
@@ -688,7 +699,11 @@ function subscribeConfig() {
   if (configChannel) supabase.removeChannel(configChannel);
   configChannel = supabase.channel('config-changes')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'config' }, payload => {
-      config = payload.new || config;
+      // on fusionne uniquement les champs publics connus, jamais tout le payload brut,
+      // pour ne jamais stocker un éventuel champ sensible en mémoire côté client
+      const safe = { ...(payload.new || {}) };
+      delete safe.admin_pw_hash;
+      config = { ...config, ...safe };
       hydrateHome();
       if (document.getElementById('page-codes').classList.contains('active')) hydrateCodes();
       if (document.getElementById('page-admin').classList.contains('active')) hydrateAdmin();
@@ -845,18 +860,18 @@ document.getElementById('btn-checklist-go').addEventListener('click', () => go('
 
 function checklistIconHTML(idx) {
   const customUrl = config.checklist_icons?.[idx];
-  if (customUrl) return `<img src="${customUrl}" alt="" style="width:22px;height:22px;object-fit:contain;display:block"/>`;
+  if (customUrl) return `<img src="${customUrl}" alt="" loading="lazy" style="width:22px;height:22px;object-fit:contain;display:block"/>`;
   return CHECKLIST_ITEMS[idx].icon;
 }
 
 function trialIconHTML(trialId) {
   const customUrl = config.trial_icons?.[trialId];
-  if (customUrl) return `<img src="${customUrl}" alt=""/>`;
+  if (customUrl) return `<img src="${customUrl}" alt="" loading="lazy"/>`;
   return TRIAL_GLYPHS[trialId] || '';
 }
 function bonusIconHTML(bonusId) {
   const customUrl = config.bonus_icons?.[bonusId];
-  if (customUrl) return `<img src="${customUrl}" alt=""/>`;
+  if (customUrl) return `<img src="${customUrl}" alt="" loading="lazy"/>`;
   return BONUS_GLYPHS[bonusId] || '';
 }
 
@@ -947,11 +962,12 @@ async function submitCode() {
   if (inputHash === currentTrial.code_hash) {
     const solved = { ...(myTeam.solved || {}) };
     solved[currentTrial.id] = val; // store the validated input — used to render the GPS slot
-    await patchMyTeam({ solved });
     const allSolved = TRIALS.every(t => solved[t.id]);
-    if (allSolved && !myTeam.finished_at) {
-      await patchMyTeam({ finished_at: new Date().toISOString() });
-    }
+    // PERF: on ne fait plus deux écritures réseau séquentielles (solved, puis finished_at) —
+    // tout part dans un seul patch, ce qui gagne un aller-retour au moment critique de la victoire
+    const patch = { solved };
+    if (allSolved && !myTeam.finished_at) patch.finished_at = new Date().toISOString();
+    await patchMyTeam(patch);
     closeModal();
     playCelebration(allSolved);
     if (allSolved) {
@@ -1031,7 +1047,7 @@ function hydrateVictory() {
   const rank = finished.findIndex(t => t.team_code === myTeam.team_code) + 1;
   const medals = ['🥇','🥈','🥉'];
   document.getElementById('v-medal').textContent = medals[rank-1] || '🏅';
-  document.getElementById('v-rank-text').textContent = rank === 1 ? '1ère équipe arrivée !' : rank + 'e équipe arrivée';
+  document.getElementById('v-rank-text').textContent = rank === 1 ? '1ère équipe arrivée !' : rank + 'e équipe arrivée';
   const get = id => { const t = TRIALS.find(x => x.slot === id); return t && solved[t.id] ? solved[t.id] : '--'; };
   document.getElementById('v-coord-lines').innerHTML =
     get('lat-deg') + '° ' + get('lat-min') + "' " + get('lat-sec') + '" ' + get('lat-dir') + '<br/>' +
@@ -1140,8 +1156,10 @@ document.getElementById('btn-stairs-claim').addEventListener('click',  () => cla
 function openWhatsapp() {
   const urls = config.whatsapp_urls || {};
   const url = myTeam ? urls[myTeam.team_code] : null;
-  if (url) window.open(url, '_blank');
-  else if (config.whatsapp_url) window.open(config.whatsapp_url, '_blank'); // legacy fallback
+  // SECURITY: noopener/noreferrer évite le "tabnabbing" (la page ouverte ne peut
+  // pas rediriger l'onglet d'origine via window.opener)
+  if (url) window.open(url, '_blank', 'noopener,noreferrer');
+  else if (config.whatsapp_url) window.open(config.whatsapp_url, '_blank', 'noopener,noreferrer'); // legacy fallback
   else toast('Lien guide non configuré');
 }
 window.openWhatsapp = openWhatsapp;
@@ -1222,8 +1240,13 @@ document.getElementById('btn-admin-toggle').addEventListener('click', () => {
 document.getElementById('btn-adm-login').addEventListener('click', async () => {
   const pw = document.getElementById('adm-login-pw').value;
   if (!pw) { toast('Mot de passe vide'); return; }
-  const hash = await sha256(pw);
-  if (hash === config.admin_pw_hash) {
+  const candidateHash = await sha256(pw);
+  // SECURITY: la vérification se fait désormais côté serveur via une fonction RPC
+  // (voir supabase-security-fixes.sql). Le hash de référence n'est plus jamais
+  // envoyé au navigateur — seul un booléen true/false revient.
+  const { data, error } = await supabase.rpc('verify_admin_password', { candidate_hash: candidateHash });
+  if (error) { console.error(error); toast('Erreur de vérification'); return; }
+  if (data === true) {
     adminAuthed = true;
     document.getElementById('adm-login-pw').value = '';
     go('page-admin');
@@ -1485,11 +1508,17 @@ setTimeout(() => {
   }
 }, 1500);
 
+// PERF: chargement initial parallélisé. Avant, config/trials/monÉquipe/toutesÉquipes
+// étaient chargés en 4 aller-retours réseau séquentiels (chacun attendait le précédent).
+// Comme ces 4 appels sont indépendants entre eux, Promise.all les lance en même temps —
+// le temps de chargement total tombe au plus lent des 4 au lieu de la somme des 4.
 loadLocalChecklist();
-await loadConfig();
-await loadTrials();
-await loadMyTeam();
-await loadAllTeams();
+await Promise.all([
+  loadConfig(),
+  loadTrials(),
+  loadMyTeam(),
+  loadAllTeams(),
+]);
 subscribeConfig();
 subscribeTrials();
 subscribeTeams();
