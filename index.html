@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -58,13 +59,40 @@
   .btn.danger{background:linear-gradient(180deg,#c44b3a,var(--crimson));color:#fff}
   .btn-row{display:grid;gap:8px;margin-top:16px;padding-top:0}
 
-  #page-home{justify-content:space-between;align-items:stretch}
-  #page-home .hero{display:flex;flex-direction:column;align-items:center;padding-top:12px}
-  .home-landscape{height:clamp(120px,22vh,190px);margin:34px 0 20px;border-radius:12px;background:#dde4e4 url("hero-bg.jpg") center 45% / cover no-repeat;border:1px solid rgba(45,79,110,.18)}
-  #page-home .btn-row{margin-top:24px;padding-bottom:8px}
+  /* Use the smallest visible viewport: Safari's toolbars and safe areas must
+     fit inside the screen, rather than adding height below a full-height page.
+     Overflow stays visible so enlarged text can still be reached by scrolling. */
+  #page-home{height:calc(100svh - env(safe-area-inset-top) - env(safe-area-inset-bottom));min-height:0;padding:54px 20px 16px;gap:10px;justify-content:space-between;align-items:stretch}
+  #page-home> :not(.home-landscape){flex-shrink:0}
+  #page-home .hero{display:flex;flex-direction:column;align-items:center;padding:0}
+  .home-landscape{flex:1 1 120px;min-height:0;max-height:180px;border-radius:12px;background:#dde4e4 url("hero-bg.jpg") center 45% / cover no-repeat}
+  #page-home .crest{width:64px;height:64px;margin-bottom:6px}
+  #page-home h1{font-size:clamp(40px,11vw,52px);line-height:1}
+  #page-home .lede{font-size:16px;line-height:1.4;max-width:320px;margin:10px auto 0}
+  #page-home .btn-row{margin:0;padding:0;width:100%}
+  #page-home .sponsor{margin:0;padding-top:8px}
+  #page-home .sponsor .eyebrow{font-size:10px;letter-spacing:.12em}
+  #page-home #sponsor-name{font-size:18px;line-height:1.25;overflow-wrap:anywhere}
+  #page-home .sponsor-logo{max-height:32px;margin-top:4px;object-fit:contain}
+  #page-home .install-banner{margin:0;padding:10px 38px 10px 12px;gap:8px}
+  #page-home .install-banner .ib-icon{display:none}
+  #page-home .install-banner .ib-body{font-size:12px;min-width:0}
+  #page-home .install-banner .ib-cta{min-height:44px;padding:8px}
+  #page-home .install-banner .ib-close{top:0;right:0;min-width:32px;min-height:44px}
+  @media (max-height:700px){
+    #page-home{gap:8px;padding-bottom:12px}
+    #page-home .home-landscape{display:none}
+    #page-home .crest{width:48px;height:48px}
+    #page-home h1{font-size:40px}
+    #page-home:has(.install-banner.show) .crest{display:none}
+  }
+  @media (max-height:580px){
+    #page-home{gap:6px}
+    #page-home .crest{display:none}
+  }
   .sponsor{margin-top:18px;padding-top:14px;border-top:1px dashed rgba(45,79,110,.25);width:100%;text-align:center}
   .sponsor-logo{max-width:140px;max-height:60px;margin:8px auto 0;display:block}
-  .admin-tag{position:absolute;top:14px;right:14px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ice-200);background:var(--navy-900);border:1px solid rgba(45,79,110,.2);border-radius:6px;padding:8px 10px;min-height:36px;cursor:pointer;letter-spacing:.12em;z-index:10}
+  .admin-tag{position:absolute;top:calc(env(safe-area-inset-top) + 8px);right:14px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ice-200);background:var(--navy-900);border:1px solid rgba(45,79,110,.2);border-radius:6px;padding:8px 10px;min-height:36px;cursor:pointer;letter-spacing:.12em;z-index:10}
 
   .chrono-bar{position:sticky;top:0;z-index:20;background:rgba(248,243,234,.96);backdrop-filter:blur(10px);border-bottom:1px solid rgba(45,79,110,.2);padding:8px 14px;display:none;justify-content:space-between;align-items:center;font-family:'JetBrains Mono',monospace;margin:-18px -20px 14px}
   .chrono-bar.active{display:flex}
@@ -284,11 +312,11 @@
       </div>
       <p class="eyebrow">Anno 2026 · Paris</p>
       <h1 class="display">Expédition<br/>Mont Martre</h1>
-      <p class="lede" style="margin-top:14px;max-width:320px;margin-left:auto;margin-right:auto">Une ascension mythique au sommet secret de la Butte.</p>
+      <p class="lede">Une ascension mythique au sommet secret de la Butte.</p>
     </div>
     <div class="sponsor" id="sponsor-block" style="display:none">
       <p class="eyebrow">Une expédition présentée par</p>
-      <div id="sponsor-name" style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:.15em"></div>
+      <div id="sponsor-name" style="font-family:'Bebas Neue',sans-serif;letter-spacing:.15em"></div>
       <img class="sponsor-logo" id="sponsor-logo" alt="Sponsor"/>
     </div>
     <div class="btn-row">
@@ -694,11 +722,14 @@ async function loadConfig() {
   // SECURITY: on ne sélectionne plus '*' — le hash du mot de passe admin n'est plus jamais
   // envoyé au navigateur d'un joueur. Il vit désormais uniquement dans la table admin_secrets,
   // jamais lue par ce client (voir vérification via RPC plus bas).
-  const { data, error } = await supabase
-    .from('config')
-    .select('id, sponsor_name, sponsor_logo, chrono_minutes, bonus_selfie, bonus_insects, bonus_stairs, final_venue, whatsapp_url, whatsapp_urls, trial_icons, bonus_icons, checklist_icons')
-    .eq('id', 1)
-    .single();
+  const publicFields = 'id, sponsor_name, sponsor_logo, chrono_minutes, bonus_selfie, bonus_insects, bonus_stairs, final_venue, whatsapp_url, whatsapp_urls, trial_icons, bonus_icons';
+  const readConfig = fields => supabase.from('config').select(fields).eq('id', 1).single();
+  let { data, error } = await readConfig(publicFields + ', checklist_icons');
+  // Older databases do not have custom checklist icons yet. Keep the explicit
+  // public-field allowlist and use the built-in icons until the migration runs.
+  if (error?.code === '42703' && error.message?.includes('config.checklist_icons')) {
+    ({ data, error } = await readConfig(publicFields));
+  }
   if (error) { console.error(error); toast('Erreur chargement config'); return; }
   config = data || {};
   hydrateHome();
