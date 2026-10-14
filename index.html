@@ -730,9 +730,35 @@ async function loadConfig() {
   if (error?.code === '42703' && error.message?.includes('config.checklist_icons')) {
     ({ data, error } = await readConfig(publicFields));
   }
-  if (error) { console.error(error); toast('Erreur chargement config'); return; }
+  if (error) {
+    console.error(error);
+    // Keep public sponsor branding available even if another config field fails.
+    await loadSponsorFallback();
+    toast('Erreur chargement config');
+    return;
+  }
   config = data || {};
   hydrateHome();
+}
+async function loadSponsorFallback() {
+  try {
+    const response = await fetch(
+      SUPABASE_URL + '/rest/v1/config?select=sponsor_name,sponsor_logo&id=eq.1',
+      { headers: { apikey: SUPABASE_KEY } }
+    );
+    if (!response.ok) throw new Error('Sponsor: HTTP ' + response.status);
+    const rows = await response.json();
+    const sponsor = Array.isArray(rows) ? rows[0] : null;
+    if (!sponsor) return;
+    config = {
+      ...config,
+      sponsor_name: typeof sponsor.sponsor_name === 'string' ? sponsor.sponsor_name : '',
+      sponsor_logo: typeof sponsor.sponsor_logo === 'string' ? sponsor.sponsor_logo : null,
+    };
+    hydrateHome();
+  } catch (error) {
+    console.error('Erreur chargement sponsor', error);
+  }
 }
 async function saveConfigToDb(patch) {
   const { error } = await supabase.from('config').update(patch).eq('id', 1);
@@ -1578,4 +1604,5 @@ if (myTeam) {
 
 </body>
 </html>
+
 
